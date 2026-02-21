@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "salestraking-fallback-secret-change-me";
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const isAuthApi = pathname.startsWith("/api/auth");
   const isLoginPage = pathname === "/login";
+  const isPublicHealth = pathname === "/api/health";
 
-  if (isAuthApi) return NextResponse.next();
+  if (isAuthApi || isPublicHealth) return NextResponse.next();
 
   const token = await getToken({ req, secret: authSecret });
   const isLoggedIn = Boolean(token);

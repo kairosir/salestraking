@@ -13,7 +13,7 @@ const credentialsSchema = z.object({
   password: z.string().min(6)
 });
 
-const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "salestraking-fallback-secret-change-me";
 
 export const authProviderFlags = {
   google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
@@ -27,26 +27,31 @@ const providers: Provider[] = [
       password: { label: "Password", type: "password" }
     },
     authorize: async (raw) => {
-      const parsed = credentialsSchema.safeParse(raw);
-      if (!parsed.success) return null;
+      try {
+        const parsed = credentialsSchema.safeParse(raw);
+        if (!parsed.success) return null;
 
-      const login = parsed.data.login.trim().toLowerCase();
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [{ email: login }, { username: login }]
-        }
-      });
+        const login = parsed.data.login.trim().toLowerCase();
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [{ email: login }, { username: login }]
+          }
+        });
 
-      if (!user?.passwordHash) return null;
-      const valid = await compare(parsed.data.password, user.passwordHash);
-      if (!valid) return null;
+        if (!user?.passwordHash) return null;
+        const valid = await compare(parsed.data.password, user.passwordHash);
+        if (!valid) return null;
 
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.image
-      };
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image
+        };
+      } catch (error) {
+        console.error("Credentials authorize failed:", error);
+        return null;
+      }
     }
   })
 ];
