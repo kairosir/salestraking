@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
-import Cropper, { type Area } from "react-easy-crop";
+import { type SyntheticEvent, useMemo, useRef, useState, useTransition } from "react";
+import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { FileImage, Loader2, Pencil, Plus, Upload, X } from "lucide-react";
 import { createSaleAction, updateSaleAction } from "@/app/actions";
 
@@ -125,7 +126,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function getCroppedDataUrl(imageSrc: string, cropPixels: Area) {
+type CropPixels = { x: number; y: number; width: number; height: number };
+
+async function getCroppedDataUrl(imageSrc: string, cropPixels: CropPixels) {
   const image = await loadImage(imageSrc);
   const canvas = document.createElement("canvas");
   const maxSide = 1400;
@@ -167,9 +170,15 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const [screenshotChanged, setScreenshotChanged] = useState(false);
   const [status, setStatus] = useState<"DONE" | "TODO" | "WAITING">(sale?.status ?? "WAITING");
   const [cropSource, setCropSource] = useState<string>("");
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [cropPixels, setCropPixels] = useState<Area | null>(null);
+  const cropImageRef = useRef<HTMLImageElement | null>(null);
+  const [crop, setCrop] = useState<Crop>({
+    unit: "%",
+    x: 10,
+    y: 10,
+    width: 80,
+    height: 80
+  });
+  const [cropPixels, setCropPixels] = useState<PixelCrop | null>(null);
   const [cropPending, setCropPending] = useState(false);
 
   const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
@@ -193,10 +202,22 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   };
 
   const applyCroppedImage = async () => {
-    if (!cropSource || !cropPixels) return;
+    if (!cropSource) return;
     setCropPending(true);
     try {
-      const nextImage = await getCroppedDataUrl(cropSource, cropPixels);
+      const img = cropImageRef.current;
+      const effectiveCrop =
+        cropPixels && cropPixels.width > 0 && cropPixels.height > 0
+          ? cropPixels
+          : img
+            ? { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }
+            : null;
+      if (!effectiveCrop) {
+        setError("Не удалось определить область обрезки");
+        return;
+      }
+
+      const nextImage = await getCroppedDataUrl(cropSource, effectiveCrop);
       if (estimateDataUrlBytes(nextImage) > MAX_IMAGE_BYTES) {
         setError("Файл после обрезки всё ещё большой. Обрежьте сильнее.");
         return;
@@ -228,12 +249,21 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
       const result = String(reader.result ?? "");
       if (!result) return;
       setCropSource(result);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
+      setCrop({
+        unit: "%",
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 80
+      });
       setCropPixels(null);
       setError(null);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleCropImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
+    cropImageRef.current = event.currentTarget;
   };
 
   return (
@@ -607,30 +637,24 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 <X size={18} />
               </button>
             </div>
-            <div className="relative h-72 touch-none overflow-hidden rounded-xl bg-black">
-              <Cropper
-                image={cropSource}
+            <div className="max-h-[70vh] overflow-auto rounded-xl bg-black p-2">
+              <ReactCrop
                 crop={crop}
-                zoom={zoom}
-                aspect={4 / 3}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={(_, croppedAreaPixels) => setCropPixels(croppedAreaPixels)}
-                objectFit="contain"
-              />
+                onChange={(nextCrop) => setCrop(nextCrop)}
+                onComplete={(nextPixelCrop) => setCropPixels(nextPixelCrop)}
+                ruleOfThirds
+                keepSelection
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={cropSource}
+                  alt="Обрезка"
+                  onLoad={handleCropImageLoad}
+                  className="max-h-[62vh] w-auto max-w-full object-contain"
+                />
+              </ReactCrop>
             </div>
-            <div className="mt-3 flex items-center gap-3">
-              <span className="text-xs text-muted">Масштаб</span>
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.1}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
+            <p className="mt-3 text-xs text-muted">Потяните за углы/края рамки, чтобы обрезать как в обычном редакторе.</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <button
                 type="button"
