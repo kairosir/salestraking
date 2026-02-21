@@ -11,6 +11,11 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const isLoggedIn = Boolean(token);
 
+  // Allow guests to open the login page.
+  if (!isLoggedIn && isLoginPage) {
+    return NextResponse.next();
+  }
+
   if (!isLoggedIn) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
