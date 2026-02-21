@@ -25,6 +25,7 @@ type SaleRow = {
 
 const CNY_TO_KZT = 80;
 const MAX_IMAGE_BYTES = 1_100_000;
+const MAX_SOURCE_IMAGE_BYTES = 15_000_000;
 const SALE_DRAFT_KEY = "salestraking:new-sale-draft:v1";
 
 const inputClass =
@@ -217,8 +218,8 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
       setError("Можно загружать только изображения");
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
-      setError("Скрин слишком большой. Максимум примерно 1 МБ.");
+    if (file.size > MAX_SOURCE_IMAGE_BYTES) {
+      setError("Скрин слишком большой. Максимум 15 МБ.");
       return;
     }
 
@@ -606,7 +607,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 <X size={18} />
               </button>
             </div>
-            <div className="relative h-72 overflow-hidden rounded-xl bg-black">
+            <div className="relative h-72 touch-none overflow-hidden rounded-xl bg-black">
               <Cropper
                 image={cropSource}
                 crop={crop}
