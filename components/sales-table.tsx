@@ -100,7 +100,42 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [mobileView, setMobileView] = useState<MobileView>("cards");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [screenshotCache, setScreenshotCache] = useState<Record<string, string>>({});
+  const [screenshotLoadingId, setScreenshotLoadingId] = useState<string | null>(null);
+  const [screenshotError, setScreenshotError] = useState<Record<string, string>>({});
   const [markingDone, startMarkingDone] = useTransition();
+
+  const loadScreenshot = async (saleId: string) => {
+    setScreenshotLoadingId(saleId);
+    setScreenshotError((prev) => {
+      const next = { ...prev };
+      delete next[saleId];
+      return next;
+    });
+
+    try {
+      const res = await fetch(`/api/sales/${saleId}/screenshot`, { cache: "no-store", credentials: "include" });
+      if (!res.ok) {
+        setScreenshotError((prev) => ({ ...prev, [saleId]: `Ошибка загрузки (${res.status})` }));
+        return;
+      }
+      const json = (await res.json()) as { screenshotData?: string | null };
+      if (json.screenshotData) {
+        setScreenshotCache((prev) => ({ ...prev, [saleId]: json.screenshotData as string }));
+      } else {
+        setScreenshotError((prev) => ({ ...prev, [saleId]: "Скрин не найден" }));
+      }
+    } catch {
+      setScreenshotError((prev) => ({ ...prev, [saleId]: "Не удалось загрузить скрин" }));
+    } finally {
+      setScreenshotLoadingId((prev) => (prev === saleId ? null : prev));
+    }
+  };
+
+  const openSaleDetails = async (sale: Sale) => {
+    setSelectedSale(sale);
+    if (!sale.hasScreenshot || screenshotCache[sale.id]) return;
+    await loadScreenshot(sale.id);
+  };
 
   const authors = useMemo(() => {
     const unique = Array.from(new Set(sales.map((s) => s.createdByName))).sort((a, b) => a.localeCompare(b, "ru"));
@@ -268,21 +303,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        onClick={async () => {
-                          setSelectedSale(sale);
-                          if (sale.hasScreenshot && !screenshotCache[sale.id]) {
-                            try {
-                              const res = await fetch(`/api/sales/${sale.id}/screenshot`, { cache: "no-store" });
-                              if (!res.ok) return;
-                              const json = (await res.json()) as { screenshotData?: string | null };
-                              if (json.screenshotData) {
-                                setScreenshotCache((prev) => ({ ...prev, [sale.id]: json.screenshotData as string }));
-                              }
-                            } catch {
-                              // Ignore screenshot loading failures to keep modal stable.
-                            }
-                          }
-                        }}
+                        onClick={() => openSaleDetails(sale)}
                         className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs text-text transition hover:border-accent"
                       >
                         <Eye size={14} />
@@ -380,21 +401,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={async () => {
-                    setSelectedSale(sale);
-                    if (sale.hasScreenshot && !screenshotCache[sale.id]) {
-                      try {
-                        const res = await fetch(`/api/sales/${sale.id}/screenshot`, { cache: "no-store" });
-                        if (!res.ok) return;
-                        const json = (await res.json()) as { screenshotData?: string | null };
-                        if (json.screenshotData) {
-                          setScreenshotCache((prev) => ({ ...prev, [sale.id]: json.screenshotData as string }));
-                        }
-                      } catch {
-                        // Ignore screenshot loading failures to keep modal stable.
-                      }
-                    }
-                  }}
+                  onClick={() => openSaleDetails(sale)}
                   className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs text-text"
                 >
                   <Eye size={14} />
@@ -504,6 +511,25 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                   alt="Скрин товара"
                   className="max-h-[320px] w-full object-contain bg-card"
                 />
+              </div>
+            )}
+
+            {selectedSale.hasScreenshot && !selectedSale.screenshotData && !screenshotCache[selectedSale.id] && (
+              <div className="mt-4 rounded-2xl border border-line bg-card p-3">
+                <p className="text-xs text-muted">
+                  {screenshotLoadingId === selectedSale.id
+                    ? "Загрузка скрина..."
+                    : screenshotError[selectedSale.id] || "Скрин не загружен"}
+                </p>
+                {screenshotLoadingId !== selectedSale.id && (
+                  <button
+                    type="button"
+                    onClick={() => loadScreenshot(selectedSale.id)}
+                    className="mt-2 inline-flex h-9 items-center gap-2 rounded-xl border border-line bg-bg px-3 text-xs text-text transition hover:border-accent"
+                  >
+                    Загрузить скрин
+                  </button>
+                )}
               </div>
             )}
 
