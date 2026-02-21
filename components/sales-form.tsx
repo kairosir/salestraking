@@ -17,11 +17,11 @@ type SaleRow = {
 };
 
 const inputClass =
-  "h-16 w-full rounded-2xl border border-line bg-[#04111f] px-5 text-[42px] text-base text-text placeholder:text-muted outline-none transition focus:border-accent sm:h-14 sm:text-[32px]";
+  "h-11 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
 
 function Label({ text, required }: { text: string; required?: boolean }) {
   return (
-    <p className="mb-2 text-[34px] text-lg font-semibold text-text sm:text-base">
+    <p className="mb-1.5 text-sm font-semibold text-text">
       {text}
       {required && <span className="ml-1 text-red-400">*</span>}
     </p>
@@ -29,7 +29,32 @@ function Label({ text, required }: { text: string; required?: boolean }) {
 }
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "KZT", maximumFractionDigits: 2 }).format(value);
+}
+
+function normalizePhoneDigits(value: string) {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("8")) digits = `7${digits.slice(1)}`;
+  if (!digits.startsWith("7")) digits = `7${digits}`;
+  return digits.slice(0, 11);
+}
+
+function formatPhone(value: string) {
+  const digits = normalizePhoneDigits(value);
+  const p = digits.slice(1);
+  const a = p.slice(0, 3);
+  const b = p.slice(3, 6);
+  const c = p.slice(6, 8);
+  const d = p.slice(8, 10);
+
+  let out = "+7";
+  if (a) out += ` (${a}`;
+  if (a.length === 3) out += ")";
+  if (b) out += ` ${b}`;
+  if (c) out += `-${c}`;
+  if (d) out += `-${d}`;
+
+  return out;
 }
 
 export function SalesForm({ sale }: { sale?: SaleRow }) {
@@ -37,6 +62,7 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "+7");
   const [quantity, setQuantity] = useState<number>(sale?.quantity ?? 1);
   const [costPrice, setCostPrice] = useState<number>(Number(sale?.costPrice ?? 0));
   const [salePrice, setSalePrice] = useState<number>(Number(sale?.salePrice ?? 0));
@@ -57,12 +83,12 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
 
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[92vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] sm:h-auto sm:max-h-[95vh] sm:max-w-4xl sm:rounded-3xl">
-            <div className="p-5 sm:p-8">
+          <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl">
+            <div className="p-4 sm:p-6">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-[48px] text-4xl font-semibold text-text sm:text-5xl">{sale ? "Редактирование" : "Новая продажа"}</h2>
-                  <p className="mt-2 text-[32px] text-xl text-muted sm:text-2xl">Заполните данные о новой продаже</p>
+                  <h2 className="text-2xl font-semibold text-text">{sale ? "Редактирование" : "Новая продажа"}</h2>
+                  <p className="mt-1 text-sm text-muted">Заполните данные о продаже</p>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
@@ -70,7 +96,7 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                   type="button"
                   aria-label="Закрыть"
                 >
-                  <X size={28} />
+                  <X size={22} />
                 </button>
               </div>
 
@@ -80,20 +106,24 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                 action={(formData) => {
                   setError(null);
                   startTransition(async () => {
-                    try {
-                      if (sale) {
-                        formData.set("id", sale.id);
-                        await updateSaleAction(formData);
-                      } else {
-                        await createSaleAction(formData);
-                      }
-                      setOpen(false);
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : "Ошибка сохранения");
+                    let result: { ok: boolean; error?: string };
+
+                    if (sale) {
+                      formData.set("id", sale.id);
+                      result = await updateSaleAction(formData);
+                    } else {
+                      result = await createSaleAction(formData);
                     }
+
+                    if (!result.ok) {
+                      setError(result.error ?? "Ошибка сохранения");
+                      return;
+                    }
+
+                    setOpen(false);
                   });
                 }}
-                className="space-y-5"
+                className="space-y-4"
               >
                 <div>
                   <Label text="Имя клиента" required />
@@ -101,8 +131,15 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                 </div>
 
                 <div>
-                  <Label text="Телефон" />
-                  <input className={inputClass} placeholder="+7 (999) 123-45-67" name="clientPhone" defaultValue={sale?.clientPhone ?? ""} required />
+                  <Label text="Телефон" required />
+                  <input
+                    className={inputClass}
+                    placeholder="+7 (999) 123-45-67"
+                    name="clientPhone"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(formatPhone(e.target.value))}
+                    required
+                  />
                 </div>
 
                 <div>
@@ -115,7 +152,7 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                   <input className={inputClass} placeholder="https://..." name="productLink" defaultValue={sale?.productLink ?? ""} />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label text="Размер" />
                     <input className={inputClass} placeholder="M, L, 42..." name="size" defaultValue={sale?.size ?? ""} />
@@ -135,12 +172,12 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label text="Цена товара" required />
                     <input
                       className={inputClass}
-                      placeholder="0.00"
+                      placeholder="0"
                       name="costPrice"
                       type="number"
                       min="0"
@@ -154,7 +191,7 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                     <Label text="Цена продажи" required />
                     <input
                       className={inputClass}
-                      placeholder="0.00"
+                      placeholder="0"
                       name="salePrice"
                       type="number"
                       min="0"
@@ -166,23 +203,23 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-line bg-[#04111f] px-5 py-4">
-                  <div className="flex items-center justify-between text-[34px] text-xl text-muted sm:text-lg">
+                <div className="rounded-2xl border border-line bg-[#04111f] px-4 py-3">
+                  <div className="flex items-center justify-between text-sm text-muted">
                     <span>Маржа за единицу</span>
-                    <span className="font-semibold text-success">{money(marginPerUnit)} $</span>
+                    <span className="font-semibold text-success">{money(marginPerUnit)}</span>
                   </div>
-                  <div className="my-3 h-px bg-line" />
-                  <div className="flex items-center justify-between text-[36px] text-2xl text-text sm:text-xl">
+                  <div className="my-2 h-px bg-line" />
+                  <div className="flex items-center justify-between text-base text-text">
                     <span className="font-semibold">Общая маржа</span>
-                    <span className="font-bold text-success">{money(marginTotal)} $</span>
+                    <span className="font-bold text-success">{money(marginTotal)}</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 border-t border-line pt-5">
+                <div className="grid grid-cols-2 gap-3 border-t border-line pt-4">
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="h-16 rounded-2xl border border-line bg-[#04111f] text-[36px] text-xl text-text transition hover:border-accent sm:h-14 sm:text-lg"
+                    className="h-11 rounded-xl border border-line bg-[#04111f] text-sm text-text transition hover:border-accent"
                   >
                     Отмена
                   </button>
@@ -190,9 +227,9 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
                   <button
                     type="submit"
                     disabled={pending}
-                    className="inline-flex h-16 items-center justify-center gap-2 rounded-2xl bg-accent text-[36px] text-xl font-semibold text-[#00131f] transition hover:brightness-110 disabled:opacity-70 sm:h-14 sm:text-lg"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110 disabled:opacity-70"
                   >
-                    {pending && <Loader2 className="animate-spin" size={18} />}
+                    {pending && <Loader2 className="animate-spin" size={16} />}
                     {sale ? "Сохранить" : "Добавить"}
                   </button>
                 </div>

@@ -53,89 +53,103 @@ export async function changePasswordAction(formData: FormData) {
   revalidatePath("/account");
 }
 
-export async function createSaleAction(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+export async function createSaleAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
 
-  const parsed = saleSchema.safeParse({
-    clientName: formData.get("clientName"),
-    clientPhone: formData.get("clientPhone"),
-    productName: formData.get("productName"),
-    productLink: formData.get("productLink"),
-    size: formData.get("size"),
-    quantity: formData.get("quantity"),
-    costPrice: formData.get("costPrice"),
-    salePrice: formData.get("salePrice")
-  });
+    const parsed = saleSchema.safeParse({
+      clientName: formData.get("clientName"),
+      clientPhone: formData.get("clientPhone"),
+      productName: formData.get("productName"),
+      productLink: formData.get("productLink"),
+      size: formData.get("size"),
+      quantity: formData.get("quantity"),
+      costPrice: formData.get("costPrice"),
+      salePrice: formData.get("salePrice")
+    });
 
-  if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Ошибка валидации");
-  }
-
-  const data = parsed.data;
-  const margin = (data.salePrice - data.costPrice) * data.quantity;
-
-  await prisma.sale.create({
-    data: {
-      clientName: data.clientName,
-      clientPhone: data.clientPhone,
-      productName: data.productName,
-      productLink: data.productLink || null,
-      size: data.size || null,
-      quantity: data.quantity,
-      costPrice: data.costPrice,
-      salePrice: data.salePrice,
-      margin,
-      createdById: session.user.id,
-      updatedById: session.user.id
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Ошибка валидации" };
     }
-  });
 
-  revalidatePath("/");
+    const data = parsed.data;
+    const margin = (data.salePrice - data.costPrice) * data.quantity;
+
+    await prisma.sale.create({
+      data: {
+        clientName: data.clientName,
+        clientPhone: data.clientPhone,
+        productName: data.productName,
+        productLink: data.productLink || null,
+        size: data.size || null,
+        quantity: data.quantity,
+        costPrice: data.costPrice,
+        salePrice: data.salePrice,
+        margin,
+        createdById: session.user.id,
+        updatedById: session.user.id
+      }
+    });
+
+    revalidatePath("/");
+    revalidatePath("/account");
+    return { ok: true };
+  } catch (error) {
+    console.error("createSaleAction failed:", error);
+    return { ok: false, error: "Не удалось создать запись. Попробуйте еще раз." };
+  }
 }
 
-export async function updateSaleAction(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+export async function updateSaleAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
 
-  const id = String(formData.get("id") ?? "");
-  if (!id) throw new Error("Не найден id записи");
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { ok: false, error: "Не найден id записи" };
 
-  const parsed = saleSchema.safeParse({
-    clientName: formData.get("clientName"),
-    clientPhone: formData.get("clientPhone"),
-    productName: formData.get("productName"),
-    productLink: formData.get("productLink"),
-    size: formData.get("size"),
-    quantity: formData.get("quantity"),
-    costPrice: formData.get("costPrice"),
-    salePrice: formData.get("salePrice")
-  });
+    const parsed = saleSchema.safeParse({
+      clientName: formData.get("clientName"),
+      clientPhone: formData.get("clientPhone"),
+      productName: formData.get("productName"),
+      productLink: formData.get("productLink"),
+      size: formData.get("size"),
+      quantity: formData.get("quantity"),
+      costPrice: formData.get("costPrice"),
+      salePrice: formData.get("salePrice")
+    });
 
-  if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Ошибка валидации");
-  }
-
-  const data = parsed.data;
-  const margin = (data.salePrice - data.costPrice) * data.quantity;
-
-  await prisma.sale.update({
-    where: { id },
-    data: {
-      clientName: data.clientName,
-      clientPhone: data.clientPhone,
-      productName: data.productName,
-      productLink: data.productLink || null,
-      size: data.size || null,
-      quantity: data.quantity,
-      costPrice: data.costPrice,
-      salePrice: data.salePrice,
-      margin,
-      updatedById: session.user.id
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Ошибка валидации" };
     }
-  });
 
-  revalidatePath("/");
+    const data = parsed.data;
+    const margin = (data.salePrice - data.costPrice) * data.quantity;
+
+    await prisma.sale.update({
+      where: { id },
+      data: {
+        clientName: data.clientName,
+        clientPhone: data.clientPhone,
+        productName: data.productName,
+        productLink: data.productLink || null,
+        size: data.size || null,
+        quantity: data.quantity,
+        costPrice: data.costPrice,
+        salePrice: data.salePrice,
+        margin,
+        updatedById: session.user.id
+      }
+    });
+
+    revalidatePath("/");
+    revalidatePath("/account");
+    return { ok: true };
+  } catch (error) {
+    console.error("updateSaleAction failed:", error);
+    return { ok: false, error: "Не удалось обновить запись. Попробуйте еще раз." };
+  }
 }
 
 export async function deleteSaleAction(formData: FormData) {
@@ -147,4 +161,5 @@ export async function deleteSaleAction(formData: FormData) {
 
   await prisma.sale.delete({ where: { id } });
   revalidatePath("/");
+  revalidatePath("/account");
 }

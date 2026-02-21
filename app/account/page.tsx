@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ChangePasswordForm } from "@/components/change-password-form";
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "KZT", maximumFractionDigits: 2 }).format(value);
 }
 
 export default async function AccountPage() {
