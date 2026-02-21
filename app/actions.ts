@@ -331,6 +331,18 @@ export async function sendTestNotificationsAction(): Promise<{ ok: boolean; sent
   }
 }
 
+export async function sendTestNotificationsGlobalAction(): Promise<{ ok: boolean; sent?: number; skipped?: number; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+    const result = await runTestNotifications();
+    return { ok: true, sent: result.sent, skipped: result.skipped };
+  } catch (error) {
+    console.error("sendTestNotificationsGlobalAction failed:", error);
+    return { ok: false, error: "Не удалось отправить общий тест" };
+  }
+}
+
 export async function runNotificationsNowAction(): Promise<{ ok: boolean; sent?: number; skipped?: number; error?: string }> {
   try {
     const session = await auth();
@@ -340,5 +352,17 @@ export async function runNotificationsNowAction(): Promise<{ ok: boolean; sent?:
   } catch (error) {
     console.error("runNotificationsNowAction failed:", error);
     return { ok: false, error: "Не удалось запустить рассылку" };
+  }
+}
+
+export async function runNotificationsGlobalNowAction(): Promise<{ ok: boolean; sent?: number; skipped?: number; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+    const result = await runNotifications({ forceWeekly: true });
+    return { ok: true, sent: result.sent, skipped: result.skipped };
+  } catch (error) {
+    console.error("runNotificationsGlobalNowAction failed:", error);
+    return { ok: false, error: "Не удалось запустить общую рассылку" };
   }
 }

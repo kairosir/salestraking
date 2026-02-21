@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { runNotificationsNowAction, sendTestNotificationsAction } from "@/app/actions";
+import {
+  runNotificationsGlobalNowAction,
+  runNotificationsNowAction,
+  sendTestNotificationsAction,
+  sendTestNotificationsGlobalAction
+} from "@/app/actions";
 
 type Recipient = {
   id: string;
@@ -23,7 +28,7 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
 
       <div className="mb-3 rounded-xl border border-line bg-card p-3 text-xs text-muted">
         <p>Telegram: отправьте боту команду `/start {loginHint}` чтобы привязать чат к вашему аккаунту.</p>
-        <p className="mt-1">Тест из личного кабинета отправляется только в ваш Telegram.</p>
+        <p className="mt-1">Кнопки `мой` отправляют только вам, кнопки `общий` отправляют всем получателям.</p>
         <p className="mt-1">Email-уведомления временно отключены. Работают только Telegram-уведомления.</p>
         <p className="mt-1">Напоминания: каждые 3 часа по товарам со статусом `Доделать/Ожидание`.</p>
         <p className="mt-1">Итог недели: в воскресенье в 22:00 (Астана), период расчета Пн 06:00 - Вс 22:00.</p>
@@ -47,7 +52,26 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
           }
           className="h-10 rounded-xl border border-line bg-card px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
         >
-          Тест уведомлений (tg)
+          Тест мой (tg)
+        </button>
+
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              setMessage("");
+              const result = await sendTestNotificationsGlobalAction();
+              if (!result.ok) {
+                setMessage(result.error || "Ошибка общего теста");
+                return;
+              }
+              setMessage(`Общий тест отправлен. Отправлено: ${result.sent ?? 0}, пропущено: ${result.skipped ?? 0}`);
+            })
+          }
+          className="h-10 rounded-xl border border-line bg-card px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
+        >
+          Тест общий (tg)
         </button>
 
         <button
@@ -66,7 +90,26 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
           }
           className="h-10 rounded-xl border border-line bg-card px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
         >
-          Запустить рассылку сейчас
+          Запуск мой
+        </button>
+
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              setMessage("");
+              const result = await runNotificationsGlobalNowAction();
+              if (!result.ok) {
+                setMessage(result.error || "Ошибка общего запуска");
+                return;
+              }
+              setMessage(`Общая рассылка запущена. Отправлено: ${result.sent ?? 0}, пропущено: ${result.skipped ?? 0}`);
+            })
+          }
+          className="h-10 rounded-xl border border-line bg-card px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
+        >
+          Запуск общий
         </button>
       </div>
 
