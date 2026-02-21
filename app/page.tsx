@@ -62,7 +62,8 @@ export default async function Home() {
     paidTo: s.paidTo,
     orderDate: s.orderDate ? s.orderDate.toISOString() : null,
     paymentDate: s.paymentDate ? s.paymentDate.toISOString() : null,
-    screenshotData: s.screenshotData,
+    screenshotData: null,
+    hasScreenshot: Boolean(s.screenshotData),
     size: s.size,
     quantity: s.quantity,
     costPriceCny: decimalText(s.costPriceCny),
@@ -105,7 +106,7 @@ export default async function Home() {
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
             <StatCard icon={<DollarSign size={18} />} label="Выручка" value={money(totals.revenue)} />
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
-            <CalculationCard totalNetMargin={totalNetMargin} />
+            <CalculationCard totalNetMargin={totalNetMargin} sales={sales.map((s) => ({ createdAt: s.createdAt.toISOString(), margin: Number(s.margin) }))} />
           </div>
         </header>
 

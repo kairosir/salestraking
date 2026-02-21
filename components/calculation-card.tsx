@@ -7,15 +7,32 @@ function money(value: number) {
   return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value) + " ₸";
 }
 
-export function CalculationCard({ totalNetMargin }: { totalNetMargin: number }) {
+type CalcSale = { createdAt: string; margin: number };
+
+export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: number; sales: CalcSale[] }) {
   const [open, setOpen] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const periodMargin = useMemo(() => {
+    const fromMs = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY;
+    const toMs = toDate ? new Date(`${toDate}T23:59:59`).getTime() : Number.POSITIVE_INFINITY;
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return totalNetMargin;
+
+    return sales.reduce((sum, sale) => {
+      const created = new Date(sale.createdAt).getTime();
+      if (!Number.isFinite(created)) return sum;
+      if (created < fromMs || created > toMs) return sum;
+      return sum + (Number.isFinite(sale.margin) ? sale.margin : 0);
+    }, 0);
+  }, [fromDate, toDate, sales, totalNetMargin]);
 
   const split = useMemo(
     () => ({
-      dasha: totalNetMargin * 0.6,
-      aim: totalNetMargin * 0.4
+      dasha: periodMargin * 0.6,
+      aim: periodMargin * 0.4
     }),
-    [totalNetMargin]
+    [periodMargin]
   );
 
   return (
@@ -33,8 +50,8 @@ export function CalculationCard({ totalNetMargin }: { totalNetMargin: number }) 
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4">
-          <div className="w-full max-w-lg overflow-y-auto rounded-3xl border border-line bg-[#020b14] p-5 sm:max-h-[90vh]">
+        <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
+          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] p-4 sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl font-semibold text-text">Расчет общей маржи</h3>
@@ -45,8 +62,29 @@ export function CalculationCard({ totalNetMargin }: { totalNetMargin: number }) 
               </button>
             </div>
 
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-xs text-muted">Период с</span>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text outline-none transition focus:border-accent"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-muted">Период по</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text outline-none transition focus:border-accent"
+                />
+              </label>
+            </div>
+
             <div className="space-y-2">
-              <Row label="Общая маржа (-5%)" value={money(totalNetMargin)} />
+              <Row label="Маржа за период" value={money(periodMargin)} />
               <Row label="Dasha (60%)" value={money(split.dasha)} />
               <Row label="aim (40%)" value={money(split.aim)} />
             </div>
