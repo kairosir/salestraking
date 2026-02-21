@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChartNoAxesCombined, DollarSign, TrendingUp, User } from "lucide-react";
@@ -87,9 +88,14 @@ export default async function Home() {
       <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-3 py-5 sm:px-5">
         <header className="rounded-3xl border border-line bg-card/75 p-4 backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted">Aimuselim Online Store</p>
-              <h1 className="text-2xl font-semibold">Отслеживание продаж</h1>
+            <div className="flex items-center gap-3">
+              <div className="overflow-hidden rounded-xl border border-line bg-card p-1.5">
+                <Image src="/icon-store.png" alt="Store icon" width={34} height={34} className="h-[34px] w-[34px] object-cover" />
+              </div>
+              <div>
+                <p className="text-sm text-muted">Aimuselim Online Store</p>
+                <h1 className="text-2xl font-semibold">Отслеживание продаж</h1>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
