@@ -52,13 +52,13 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-24 w-full flex-col justify-between rounded-2xl border border-line bg-card/70 bg-panel p-3 text-left transition hover:border-accent sm:h-28 sm:p-3.5"
+        className="flex h-[86px] w-full flex-col rounded-2xl border border-line bg-card/70 bg-panel p-3 text-left transition hover:border-accent sm:h-28 sm:p-3.5"
       >
         <p className="inline-flex items-center gap-2 text-xs text-muted sm:text-sm">
           <Calculator size={18} />
           Расчет
         </p>
-        <p className="text-lg font-semibold leading-none text-text sm:text-xl">{money(totalNetMargin)}</p>
+        <p className="mt-2 text-lg font-semibold leading-none text-text sm:mt-3 sm:text-xl">{money(totalNetMargin)}</p>
       </button>
 
       {mounted &&

@@ -146,12 +146,12 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="flex h-24 flex-col justify-between rounded-2xl border border-line bg-card/70 bg-panel p-3 sm:h-28 sm:p-3.5">
+    <div className="flex h-[86px] flex-col rounded-2xl border border-line bg-card/70 bg-panel p-3 sm:h-28 sm:p-3.5">
       <p className="inline-flex items-center gap-2 text-xs text-muted sm:text-sm">
         <span>{icon}</span>
         {label}
       </p>
-      <p className={`text-lg font-semibold leading-none sm:text-xl ${accent ? "text-success" : "text-text"}`}>{value}</p>
+      <p className={`mt-2 text-lg font-semibold leading-none sm:mt-3 sm:text-xl ${accent ? "text-success" : "text-text"}`}>{value}</p>
     </div>
   );
 }
