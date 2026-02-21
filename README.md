@@ -1,27 +1,31 @@
 # SalesTracker
 
-Современный мини-сервис для учета продаж с авторизацией и Neon PostgreSQL.
+Современный сервис учета продаж с Neon PostgreSQL и авторизацией.
 
 ## Что реализовано
 
-- Личный кабинет
-  - вход по логину/паролю (Credentials)
-  - вход через Google
-  - вход через Apple
-- Таблица продаж и удобная мобильная форма
-- Поля:
+- Личный кабинет:
+  - логин/пароль (Credentials)
+  - Google OAuth (если ключи заданы)
+  - Apple OAuth (если ключи заданы)
+- Таблица продаж с мобильным UX:
+  - поиск
+  - фильтр по автору
+  - сортировка (новые/старые/маржа/выручка)
+  - мобильные режимы `карточки/список`
+- Поля продажи:
   - имя клиента
-  - телефон клиента
+  - номер телефона
   - товар
   - ссылка на товар
   - размер
   - количество
   - цена товара
   - цена продажи
-  - маржа (считается автоматически)
-- Аудит изменений:
-  - кто добавил запись
-  - кто последний изменил запись
+  - маржа (авторасчет)
+- Аудит:
+  - кто добавил
+  - кто изменил
 
 ## Стек
 
@@ -31,93 +35,88 @@
 - Neon PostgreSQL
 - Tailwind CSS
 
-## Запуск
+## Локальный запуск
 
-1. Установите зависимости:
+1. Установить зависимости:
 
 ```bash
 npm install
 ```
 
-2. Скопируйте env:
+2. Подготовить env:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Заполните `.env`:
+3. Заполнить `.env`:
 
 - `DATABASE_URL` из Neon
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL` (`http://localhost:3000` локально)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
-- `APPLE_ID` / `APPLE_SECRET`
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (опционально)
+- `APPLE_ID` / `APPLE_SECRET` (опционально)
 
-4. Создайте таблицы в БД:
+4. Инициализировать БД:
 
 ```bash
 npm run prisma:push
 npm run prisma:generate
-```
-
-5. Создайте тестового пользователя (логин/пароль):
-
-```bash
 npm run db:seed
 ```
 
-Демо-логин после seed:
-
-- login: `admin` или `admin@salestracker.local`
-- password: `admin12345`
-
-6. Запустите проект:
+5. Запустить:
 
 ```bash
 npm run dev
 ```
 
-## OAuth callback URLs
+## Проверка подключения Neon/Auth
 
-Для Google и Apple в настройках провайдера укажите callback:
+После запуска открой:
 
-`http://localhost:3000/api/auth/callback/google`
+- `/api/health`
 
-`http://localhost:3000/api/auth/callback/apple`
+Ожидаемо:
 
-Для продакшена замените домен на ваш Vercel URL.
+- `db: "ok"` — Neon подключен
+- `auth.google/auth.apple` — видно, какие OAuth-провайдеры реально активны
 
-## Автопуш в GitHub
+## Подключение .env в Vercel
 
-В репозитории включен `post-commit` hook через `core.hooksPath=.githooks`.
+### Вариант A: через Vercel Dashboard
 
-Что это дает:
+В проекте Vercel `Settings -> Environment Variables` добавь:
 
-- после каждого `git commit` автоматически выполняется `git push` в текущую ветку
+- `DATABASE_URL`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL` (например, `https://salestraking.vercel.app`)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (если нужен Google login)
+- `APPLE_ID` / `APPLE_SECRET` (если нужен Apple login)
 
-Дополнительно есть скрипт:
+### Вариант B: синхронизация из локального `.env`
+
+Требуется установленный Vercel CLI и `VERCEL_TOKEN`.
 
 ```bash
-./scripts/auto-sync.sh "your commit message"
+export VERCEL_TOKEN="your_token"
+npm run vercel:env:sync
 ```
 
-Он делает `add + commit + push` одной командой.
+Для preview-среды:
 
-## Автодеплой из GitHub в Vercel
+```bash
+npm run vercel:env:sync:preview
+```
 
-Добавлен workflow:
+## OAuth callback URLs
 
-- `.github/workflows/vercel-deploy.yml`
+Для продакшена в Google/Apple укажи callback:
 
-Поведение:
+- `https://<your-domain>/api/auth/callback/google`
+- `https://<your-domain>/api/auth/callback/apple`
 
-- push в `main` -> production deploy в Vercel
-- pull request в `main` -> preview deploy в Vercel
+## Автопуш и автодеплой
 
-Нужно добавить GitHub Secrets в репозитории (`Settings` -> `Secrets and variables` -> `Actions`):
-
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-
-Также в Vercel должен быть создан и привязан проект к этому репозиторию.
+- После каждого `git commit` срабатывает `post-commit` hook и делает `git push`.
+- GitHub Actions workflow `.github/workflows/vercel-deploy.yml` выполняет деплой в Vercel.

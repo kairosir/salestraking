@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth, signIn, signOut } from "@/lib/auth";
+import { auth, authProviderFlags, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saleSchema } from "@/lib/sale-schema";
 
@@ -17,6 +17,14 @@ export async function loginWithCredentials(formData: FormData) {
 }
 
 export async function loginWithProvider(provider: "google" | "apple") {
+  if (provider === "google" && !authProviderFlags.google) {
+    throw new Error("Google OAuth не настроен. Добавьте GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET.");
+  }
+
+  if (provider === "apple" && !authProviderFlags.apple) {
+    throw new Error("Apple OAuth не настроен. Добавьте APPLE_ID и APPLE_SECRET.");
+  }
+
   await signIn(provider, { redirectTo: "/" });
 }
 
