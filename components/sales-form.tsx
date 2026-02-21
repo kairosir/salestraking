@@ -39,7 +39,7 @@ function Label({ text, required }: { text: string; required?: boolean }) {
 }
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " ₸";
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value) + " ₸";
 }
 
 function parseFlexibleNumber(value: string) {

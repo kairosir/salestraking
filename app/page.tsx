@@ -9,7 +9,7 @@ import { CalculationCard } from "@/components/calculation-card";
 import { logoutAction } from "@/app/actions";
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " ₸";
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value) + " ₸";
 }
 
 function decimalText(value: unknown) {

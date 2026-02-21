@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Calculator, X } from "lucide-react";
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " ₸";
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value) + " ₸";
 }
 
 export function CalculationCard({ totalNetMargin }: { totalNetMargin: number }) {
