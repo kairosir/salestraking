@@ -62,12 +62,13 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
 
   const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "");
   const [quantity, setQuantity] = useState<number>(sale?.quantity ?? 1);
-  const [costPriceCnyInput, setCostPriceCnyInput] = useState<string>(sale?.costPriceCny ?? "0");
-  const [salePrice, setSalePrice] = useState<number>(Number(sale?.salePrice ?? 0));
+  const [costPriceCnyInput, setCostPriceCnyInput] = useState<string>(sale?.costPriceCny ?? "");
+  const [salePriceInput, setSalePriceInput] = useState<string>(sale?.salePrice ?? "");
   const [screenshotData, setScreenshotData] = useState<string>(sale?.screenshotData ?? "");
   const [status, setStatus] = useState<"DONE" | "TODO" | "WAITING">(sale?.status ?? "WAITING");
 
   const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
+  const salePrice = useMemo(() => parseFlexibleNumber(salePriceInput), [salePriceInput]);
   const costPriceKzt = useMemo(() => costPriceCny * CNY_TO_KZT, [costPriceCny]);
   const marginPerUnit = useMemo(() => salePrice - costPriceKzt, [salePrice, costPriceKzt]);
   const marginTotal = useMemo(() => marginPerUnit * quantity, [marginPerUnit, quantity]);
@@ -234,7 +235,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       placeholder="Например: 19.5 или 19,5"
                       name="costPriceCny"
                       inputMode="decimal"
-                      defaultValue={sale?.costPriceCny ?? "0"}
+                      value={costPriceCnyInput}
                       onChange={(e) => setCostPriceCnyInput(e.target.value)}
                     />
                     <p className="mt-1 text-xs text-muted">Конвертация: 1 ¥ = 80 ₸. В тенге: {money(costPriceKzt)}</p>
@@ -245,11 +246,9 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       className={inputClass}
                       placeholder="0"
                       name="salePrice"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      defaultValue={sale?.salePrice ?? "0"}
-                      onChange={(e) => setSalePrice(Number(e.target.value || 0))}
+                      inputMode="decimal"
+                      value={salePriceInput}
+                      onChange={(e) => setSalePriceInput(e.target.value)}
                     />
                     <p className="mt-1 text-xs text-muted">Это цена, которую платит клиент</p>
                   </div>
