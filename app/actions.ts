@@ -323,7 +323,7 @@ export async function sendTestNotificationsAction(): Promise<{ ok: boolean; sent
   try {
     const session = await auth();
     if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
-    const result = await runTestNotifications();
+    const result = await runTestNotifications({ userId: session.user.id });
     return { ok: true, sent: result.sent, skipped: result.skipped };
   } catch (error) {
     console.error("sendTestNotificationsAction failed:", error);
@@ -335,7 +335,7 @@ export async function runNotificationsNowAction(): Promise<{ ok: boolean; sent?:
   try {
     const session = await auth();
     if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
-    const result = await runNotifications();
+    const result = await runNotifications({ userId: session.user.id });
     return { ok: true, sent: result.sent, skipped: result.skipped };
   } catch (error) {
     console.error("runNotificationsNowAction failed:", error);

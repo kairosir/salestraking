@@ -56,7 +56,15 @@ export async function handleTelegramWebhook(update: TelegramUpdate) {
 
   if (command === "/start" || command === "start") {
     const linkedUser = await linkUserByLogin(arg);
-    const userId = linkedUser?.id ?? existing?.userId ?? null;
+    const targetUserId = linkedUser?.id ?? existing?.userId ?? null;
+    const existingUserId = existing?.userId ?? null;
+
+    if (existingUserId && linkedUser?.id && linkedUser.id !== existingUserId) {
+      await sendTelegramMessage(chatId, "Этот Telegram-чат уже привязан к другому пользователю и не может быть перепривязан.");
+      return { ok: true };
+    }
+
+    const userId = targetUserId;
 
     await prisma.notificationRecipient.upsert({
       where: { telegramChatId: chatId },

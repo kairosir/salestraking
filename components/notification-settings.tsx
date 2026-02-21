@@ -23,6 +23,7 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
 
       <div className="mb-3 rounded-xl border border-line bg-card p-3 text-xs text-muted">
         <p>Telegram: отправьте боту команду `/start {loginHint}` чтобы привязать чат к вашему аккаунту.</p>
+        <p className="mt-1">Тест из личного кабинета отправляется только в ваш Telegram.</p>
         <p className="mt-1">Email-уведомления временно отключены. Работают только Telegram-уведомления.</p>
         <p className="mt-1">Напоминания: каждые 3 часа по товарам со статусом `Доделать/Ожидание`.</p>
         <p className="mt-1">Итог недели: в воскресенье в 22:00 (Астана), период расчета Пн 06:00 - Вс 22:00.</p>

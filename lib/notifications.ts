@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 const ASTANA_TIMEZONE = "Asia/Almaty";
 const ASTANA_UTC_OFFSET_HOURS = 5;
+type NotificationScope = { userId?: string };
 
 type AstanaParts = {
   year: number;
@@ -187,9 +188,12 @@ async function sendEmailMessage(email: string, subject: string, text: string) {
   return { ok: true as const };
 }
 
-export async function runTestNotifications() {
+export async function runTestNotifications(scope: NotificationScope = {}) {
   const recipients = await prisma.notificationRecipient.findMany({
-    where: { isActive: true }
+    where: {
+      isActive: true,
+      ...(scope.userId ? { userId: scope.userId } : {})
+    }
   });
   const activeRecipients = recipients.filter((r) => r.telegramEnabled && r.telegramChatId);
 
@@ -237,10 +241,13 @@ async function saveSent(kind: NotificationKind, windowKey: string, saleId: strin
   });
 }
 
-export async function runNotifications() {
+export async function runNotifications(scope: NotificationScope = {}) {
   const now = new Date();
   const recipients = await prisma.notificationRecipient.findMany({
-    where: { isActive: true }
+    where: {
+      isActive: true,
+      ...(scope.userId ? { userId: scope.userId } : {})
+    }
   });
   const activeRecipients = recipients.filter((r) => r.telegramEnabled && r.telegramChatId);
   if (!activeRecipients.length) {
@@ -249,7 +256,8 @@ export async function runNotifications() {
 
   const sales = await prisma.sale.findMany({
     where: {
-      status: { in: [SaleStatus.TODO, SaleStatus.WAITING] }
+      status: { in: [SaleStatus.TODO, SaleStatus.WAITING] },
+      ...(scope.userId ? { createdById: scope.userId } : {})
     },
     select: {
       id: true,
@@ -337,7 +345,8 @@ export async function runNotifications() {
           createdAt: {
             gte: week.startUtc,
             lte: week.endUtc
-          }
+          },
+          ...(scope.userId ? { createdById: scope.userId } : {})
         },
         _sum: { margin: true }
       }),
@@ -346,7 +355,8 @@ export async function runNotifications() {
           createdAt: {
             gte: week.startUtc,
             lte: week.endUtc
-          }
+          },
+          ...(scope.userId ? { createdById: scope.userId } : {})
         }
       })
     ]);
