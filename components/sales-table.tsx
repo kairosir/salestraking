@@ -33,16 +33,30 @@ type SortMode = "newest" | "oldest" | "marginDesc" | "revenueDesc";
 type MobileView = "cards" | "list";
 
 function money(value: string | number) {
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(value)) + " ₸";
+  const numeric = Number(value);
+  const safe = Number.isFinite(numeric) ? numeric : 0;
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(safe) + " ₸";
 }
 
 function dateFmt(value: string) {
-  return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "-";
+  try {
+    return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+  } catch {
+    return "-";
+  }
 }
 
 function onlyDate(value?: string | null) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value));
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "-";
+  try {
+    return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+  } catch {
+    return "-";
+  }
 }
 
 function waLink(phone: string) {
@@ -65,6 +79,11 @@ function statusColor(status: Sale["status"]) {
   if (status === "DONE") return "bg-emerald-500";
   if (status === "TODO") return "bg-rose-500 status-blink";
   return "bg-amber-400 status-blink";
+}
+
+function safeTime(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
 }
 
 export function SalesTable({ sales }: { sales: Sale[] }) {
@@ -98,8 +117,8 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       const aDone = a.status === "DONE";
       const bDone = b.status === "DONE";
       if (aDone !== bDone) return aDone ? 1 : -1;
-      if (sort === "newest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      if (sort === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sort === "newest") return safeTime(b.createdAt) - safeTime(a.createdAt);
+      if (sort === "oldest") return safeTime(a.createdAt) - safeTime(b.createdAt);
       if (sort === "marginDesc") return Number(b.margin) - Number(a.margin);
       const aRevenue = Number(a.salePrice) * a.quantity;
       const bRevenue = Number(b.salePrice) * b.quantity;

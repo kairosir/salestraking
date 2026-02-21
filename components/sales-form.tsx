@@ -39,7 +39,8 @@ function Label({ text, required }: { text: string; required?: boolean }) {
 }
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value) + " ₸";
+  const safe = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(safe) + " ₸";
 }
 
 function parseFlexibleNumber(value: string) {
@@ -128,7 +129,11 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
     if (sale || typeof window === "undefined") return;
     setDraft((prev) => {
       const next = { ...prev, ...patch };
-      window.localStorage.setItem(SALE_DRAFT_KEY, JSON.stringify(next));
+      try {
+        window.localStorage.setItem(SALE_DRAFT_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore storage errors (private mode/quota), do not break UI.
+      }
       return next;
     });
   };
@@ -225,7 +230,11 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                     }
 
                     if (!sale && typeof window !== "undefined") {
-                      window.localStorage.removeItem(SALE_DRAFT_KEY);
+                      try {
+                        window.localStorage.removeItem(SALE_DRAFT_KEY);
+                      } catch {
+                        // Ignore storage errors, data already submitted.
+                      }
                       setDraft(emptyDraft());
                     }
                     setOpen(false);
