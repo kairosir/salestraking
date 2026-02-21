@@ -67,7 +67,7 @@ function inTransitMessage(input: { clientName: string; clientPhone: string; prod
   ].join("\n");
 }
 
-async function sendTelegramMessage(chatId: string, text: string) {
+export async function sendTelegramMessage(chatId: string, text: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return { ok: false, reason: "TELEGRAM_BOT_TOKEN missing" as const };
 

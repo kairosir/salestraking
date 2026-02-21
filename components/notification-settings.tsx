@@ -25,6 +25,7 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
       <div className="mb-3 rounded-xl border border-line bg-[#031325] p-3 text-xs text-muted">
         <p>Telegram: отправьте боту команду `/start {loginHint}` чтобы привязать чат к вашему аккаунту.</p>
         <p className="mt-1">После этого уведомления и тестовые отправки будут приходить в Telegram.</p>
+        <p className="mt-1">Команды бота: `/help`, `/status`, `/stop`, `/resume`.</p>
       </div>
 
       <div className="mb-3 flex flex-col gap-2 sm:flex-row">
