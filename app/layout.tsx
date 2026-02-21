@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
+import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin", "cyrillic"] });
@@ -7,10 +8,16 @@ const manrope = Manrope({ subsets: ["latin", "cyrillic"] });
 export const metadata: Metadata = {
   title: "Aimuselim Online Store",
   description: "Aimuselim Online Store - tracking dashboard",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon-store.png",
     shortcut: "/icon-store.png",
     apple: "/icon-store.png"
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Aimuselim",
+    statusBarStyle: "default"
   }
 };
 
@@ -25,7 +32,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className={manrope.className}>{children}</body>
+      <body className={manrope.className}>
+        <PwaRegister />
+        {children}
+      </body>
     </html>
   );
 }
