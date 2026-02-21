@@ -160,15 +160,9 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 <input type="hidden" name="screenshotData" value={screenshotData} />
                 <input type="hidden" name="status" value={status} />
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label text="ID товара" />
-                    <input className={inputClass} placeholder="SKU / ID" name="productId" defaultValue={sale?.productId ?? ""} />
-                  </div>
-                  <div>
-                    <Label text="Дата заказа" />
-                    <input className={inputClass} type="date" name="orderDate" defaultValue={toDateInputValue(sale?.orderDate)} />
-                  </div>
+                <div>
+                  <Label text="Дата заказа" />
+                  <input className={inputClass} type="date" name="orderDate" defaultValue={toDateInputValue(sale?.orderDate)} />
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -201,6 +195,11 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 <div>
                   <Label text="Товар" />
                   <input className={inputClass} placeholder="Название товара" name="productName" defaultValue={sale?.productName ?? ""} />
+                </div>
+
+                <div>
+                  <Label text="Трек код товара" />
+                  <input className={inputClass} placeholder="TRK123456789" name="productId" defaultValue={sale?.productId ?? ""} />
                 </div>
 
                 <div>

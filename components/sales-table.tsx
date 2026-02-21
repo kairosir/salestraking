@@ -119,7 +119,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по клиенту, товару, ID, автору..."
+            placeholder="Поиск по клиенту, товару, трек-коду, автору..."
             className="h-11 w-full rounded-2xl border border-line bg-[#031325] pl-9 pr-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent"
           />
         </div>
@@ -216,7 +216,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     </div>
                     <div>
                       <p className="truncate text-xs text-text">{sale.productName}</p>
-                      {sale.productId && <p className="text-[11px] text-muted">ID: {sale.productId}</p>}
+                      {sale.productId && <p className="text-[11px] text-muted">Трек: {sale.productId}</p>}
                     </div>
                     <p className="text-xs text-text">{sale.size || "-"}</p>
                     <p className="text-xs text-text">{sale.quantity}</p>
@@ -314,7 +314,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               </div>
 
               <p className="text-sm text-text">{sale.productName}</p>
-              {sale.productId && <p className="text-xs text-muted">ID: {sale.productId}</p>}
+              {sale.productId && <p className="text-xs text-muted">Трек: {sale.productId}</p>}
               <p className="mt-1 text-xs text-muted">
                 Размер: {sale.size || "-"} · Кол-во: {sale.quantity}
               </p>
@@ -409,7 +409,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Info label="ID товара" value={selectedSale.productId || "-"} />
+              <Info label="Трек код товара" value={selectedSale.productId || "-"} />
               <Info label="Товар" value={selectedSale.productName} />
               <Info label="Клиент" value={selectedSale.clientName} />
               <Info label="Телефон" value={selectedSale.clientPhone} />
