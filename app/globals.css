@@ -13,9 +13,9 @@
   --success: 42 133 88;
   --mesh-a: 229 224 216;
   --mesh-b: 35 45 75;
-  --button-bg: 215 198 175;
-  --button-border: 178 153 138;
-  --button-text: 56 42 31;
+  --button-bg: 60 155 106;
+  --button-border: 42 133 88;
+  --button-text: 245 250 246;
 }
 
 html.theme-dark {
@@ -29,9 +29,9 @@ html.theme-dark {
   --success: 91 200 140;
   --mesh-a: 44 46 52;
   --mesh-b: 82 66 45;
-  --button-bg: 93 76 56;
-  --button-border: 122 102 78;
-  --button-text: 239 233 225;
+  --button-bg: 73 173 119;
+  --button-border: 55 142 97;
+  --button-text: 240 251 245;
 }
 
 * {
