@@ -257,3 +257,26 @@ export async function deleteSaleAction(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/account");
 }
+
+export async function markSaleDoneAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+    if (!id) return { ok: false, error: "Не найден id записи" };
+
+    await prisma.sale.update({
+      where: { id },
+      data: {
+        status: "DONE",
+        updatedById: session.user.id
+      }
+    });
+
+    revalidatePath("/");
+    revalidatePath("/account");
+    return { ok: true };
+  } catch (error) {
+    console.error("markSaleDoneAction failed:", error);
+    return { ok: false, error: "Не удалось отметить товар как выданный" };
+  }
+}

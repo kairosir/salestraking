@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Eye, LayoutGrid, List, MessageCircle, Search, Trash2, X } from "lucide-react";
-import { deleteSaleAction } from "@/app/actions";
+import { useMemo, useState, useTransition } from "react";
+import { Check, Eye, LayoutGrid, List, Loader2, MessageCircle, Search, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { deleteSaleAction, markSaleDoneAction } from "@/app/actions";
 import { SalesForm } from "@/components/sales-form";
 
 type Sale = {
@@ -67,11 +68,13 @@ function statusColor(status: Sale["status"]) {
 }
 
 export function SalesTable({ sales }: { sales: Sale[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [author, setAuthor] = useState("all");
   const [sort, setSort] = useState<SortMode>("newest");
   const [mobileView, setMobileView] = useState<MobileView>("cards");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [markingDone, startMarkingDone] = useTransition();
 
   const authors = useMemo(() => {
     const unique = Array.from(new Set(sales.map((s) => s.createdByName))).sort((a, b) => a.localeCompare(b, "ru"));
@@ -92,6 +95,9 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
     const byAuthor = byQuery.filter((item) => (author === "all" ? true : item.createdByName === author));
 
     return [...byAuthor].sort((a, b) => {
+      const aDone = a.status === "DONE";
+      const bDone = b.status === "DONE";
+      if (aDone !== bDone) return aDone ? 1 : -1;
       if (sort === "newest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       if (sort === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       if (sort === "marginDesc") return Number(b.margin) - Number(a.margin);
@@ -198,6 +204,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                   <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[0.22fr_1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr]">
                     <div className="flex items-center gap-1">
                       <span className={`h-7 w-1.5 rounded-full ${statusColor(sale.status)}`} />
+                      {sale.status === "DONE" && <Check size={12} className="text-emerald-300" />}
                     </div>
                     <p className="truncate text-sm font-medium text-text">{sale.clientName}</p>
                     <div className="flex items-center gap-1.5">
@@ -292,6 +299,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 <div>
                   <div className="mb-1 flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${statusColor(sale.status)}`} />
+                    {sale.status === "DONE" && <Check size={12} className="text-emerald-300" />}
                     <p className="text-[11px] text-muted">{statusLabel(sale.status)}</p>
                   </div>
                   <p className="text-base font-semibold text-text">{sale.clientName}</p>
@@ -381,6 +389,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 <div>
                   <div className="mb-1 flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${statusColor(sale.status)}`} />
+                    {sale.status === "DONE" && <Check size={12} className="text-emerald-300" />}
                     <p className="text-[11px] text-muted">{statusLabel(sale.status)}</p>
                   </div>
                   <p className="font-medium text-text">{sale.clientName}</p>
@@ -439,6 +448,32 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 <img src={selectedSale.screenshotData} alt="Скрин товара" className="max-h-[320px] w-full object-contain bg-[#04111f]" />
               </div>
             )}
+
+            <div className="mt-4 grid grid-cols-1 gap-2 border-t border-line pt-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setSelectedSale(null)}
+                className="h-10 rounded-xl border border-line bg-[#04111f] text-sm text-text transition hover:border-accent"
+              >
+                Закрыть
+              </button>
+              <button
+                type="button"
+                disabled={markingDone || selectedSale.status === "DONE"}
+                onClick={() => {
+                  startMarkingDone(async () => {
+                    const result = await markSaleDoneAction(selectedSale.id);
+                    if (!result.ok) return;
+                    setSelectedSale((prev) => (prev ? { ...prev, status: "DONE" } : prev));
+                    router.refresh();
+                  });
+                }}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-500/90 px-3 text-sm font-semibold text-[#00131f] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {markingDone && <Loader2 size={14} className="animate-spin" />}
+                {selectedSale.status === "DONE" ? "Выдано ✓" : "Выдано"}
+              </button>
+            </div>
           </div>
         </div>
       )}
