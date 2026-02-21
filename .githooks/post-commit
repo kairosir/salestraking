@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Auto-push the current branch after each successful commit.
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+if [ -z "$branch" ]; then
+  exit 0
+fi
+
+echo "[auto-push] pushing branch '$branch' to origin..."
+git push -u origin "$branch"

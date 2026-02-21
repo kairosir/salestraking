@@ -1,0 +1,73 @@
+import { redirect } from "next/navigation";
+import { Lock, Mail } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { loginWithCredentials, loginWithProvider } from "@/app/actions";
+
+export default async function LoginPage() {
+  const session = await auth();
+  if (session?.user) redirect("/");
+
+  return (
+    <main className="min-h-screen bg-mesh px-4 py-10">
+      <div className="mx-auto max-w-md rounded-3xl border border-line bg-[#031021cc] p-6 shadow-2xl backdrop-blur">
+        <p className="mb-1 text-sm text-muted">SalesTracker</p>
+        <h1 className="mb-6 text-2xl font-semibold">Вход в личный кабинет</h1>
+
+        <form action={loginWithCredentials} className="space-y-3">
+          <label className="block space-y-1">
+            <span className="text-xs text-muted">Логин или email</span>
+            <div className="relative">
+              <Mail size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input name="login" required className="h-11 w-full rounded-xl border border-line bg-[#031325] pl-9 pr-3 text-sm outline-none transition focus:border-accent" />
+            </div>
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-xs text-muted">Пароль</span>
+            <div className="relative">
+              <Lock size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                type="password"
+                name="password"
+                required
+                className="h-11 w-full rounded-xl border border-line bg-[#031325] pl-9 pr-3 text-sm outline-none transition focus:border-accent"
+              />
+            </div>
+          </label>
+
+          <button type="submit" className="h-11 w-full rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110">
+            Войти
+          </button>
+        </form>
+
+        <div className="my-4 h-px bg-line" />
+
+        <div className="space-y-2">
+          <form
+            action={async () => {
+              "use server";
+              await loginWithProvider("google");
+            }}
+          >
+            <button type="submit" className="h-11 w-full rounded-xl border border-line bg-card text-sm transition hover:border-accent">
+              Войти через Google
+            </button>
+          </form>
+
+          <form
+            action={async () => {
+              "use server";
+              await loginWithProvider("apple");
+            }}
+          >
+            <button type="submit" className="h-11 w-full rounded-xl border border-line bg-card text-sm transition hover:border-accent">
+              Войти через Apple
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-6 text-xs text-muted">После первого входа через Google/Apple аккаунт создается автоматически.</p>
+      </div>
+    </main>
+  );
+}
