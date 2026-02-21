@@ -13,14 +13,26 @@ export default async function AccountPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const mySales = await prisma.sale.findMany({
-    where: { createdById: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 8
-  });
+  const [mySales, allMySalesForRevenue, myAgg] = await Promise.all([
+    prisma.sale.findMany({
+      where: { createdById: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 12
+    }),
+    prisma.sale.findMany({
+      where: { createdById: session.user.id },
+      select: { salePrice: true, quantity: true }
+    }),
+    prisma.sale.aggregate({
+      where: { createdById: session.user.id },
+      _sum: { margin: true },
+      _count: { id: true }
+    })
+  ]);
 
-  const totalMargin = mySales.reduce((sum, sale) => sum + Number(sale.margin), 0);
-  const totalRevenue = mySales.reduce((sum, sale) => sum + Number(sale.salePrice) * sale.quantity, 0);
+  const totalMargin = Number(myAgg._sum.margin ?? 0);
+  const totalRevenue = allMySalesForRevenue.reduce((sum, sale) => sum + Number(sale.salePrice) * sale.quantity, 0);
+  const totalSalesCount = myAgg._count.id;
 
   return (
     <main className="min-h-screen bg-bg bg-mesh">
@@ -37,10 +49,11 @@ export default async function AccountPage() {
           </div>
         </header>
 
-        <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <Card icon={<User size={18} />} label="Пользователь" value={session.user.name || session.user.email || "User"} />
           <Card icon={<DollarSign size={18} />} label="Мой заработок (маржа)" value={money(totalMargin)} accent />
           <Card icon={<DollarSign size={18} />} label="Моя выручка" value={money(totalRevenue)} />
+          <Card icon={<DollarSign size={18} />} label="Мои продажи" value={String(totalSalesCount)} />
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
