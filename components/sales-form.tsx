@@ -24,6 +24,7 @@ type SaleRow = {
 
 const CNY_TO_KZT = 80;
 const MAX_IMAGE_BYTES = 1_100_000;
+const SALE_DRAFT_KEY = "salestraking:new-sale-draft:v1";
 
 const inputClass =
   "h-11 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
@@ -54,11 +55,60 @@ function toDateInputValue(value?: string | null) {
   return date.toISOString().slice(0, 10);
 }
 
+type SaleDraft = {
+  orderDate: string;
+  paymentDate: string;
+  paidTo: string;
+  clientName: string;
+  clientPhone: string;
+  productName: string;
+  productId: string;
+  productLink: string;
+  size: string;
+  quantity: string;
+  costPriceCny: string;
+  salePrice: string;
+  status: "DONE" | "TODO" | "WAITING";
+  screenshotData: string;
+};
+
+function emptyDraft(): SaleDraft {
+  return {
+    orderDate: "",
+    paymentDate: "",
+    paidTo: "",
+    clientName: "",
+    clientPhone: "",
+    productName: "",
+    productId: "",
+    productLink: "",
+    size: "",
+    quantity: "1",
+    costPriceCny: "",
+    salePrice: "",
+    status: "WAITING",
+    screenshotData: ""
+  };
+}
+
+function loadDraft(): SaleDraft {
+  if (typeof window === "undefined") return emptyDraft();
+  try {
+    const raw = window.localStorage.getItem(SALE_DRAFT_KEY);
+    if (!raw) return emptyDraft();
+    const parsed = JSON.parse(raw) as Partial<SaleDraft>;
+    return { ...emptyDraft(), ...parsed };
+  } catch {
+    return emptyDraft();
+  }
+}
+
 export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [draft, setDraft] = useState<SaleDraft>(emptyDraft());
 
   const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "");
   const [quantity, setQuantity] = useState<number>(sale?.quantity ?? 1);
@@ -73,6 +123,15 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const marginPerUnit = useMemo(() => salePrice - costPriceKzt, [salePrice, costPriceKzt]);
   const marginTotal = useMemo(() => marginPerUnit * quantity, [marginPerUnit, quantity]);
   const payoutTotal = useMemo(() => marginTotal * 0.95, [marginTotal]);
+
+  const persistDraft = (patch: Partial<SaleDraft>) => {
+    if (sale || typeof window === "undefined") return;
+    setDraft((prev) => {
+      const next = { ...prev, ...patch };
+      window.localStorage.setItem(SALE_DRAFT_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -93,6 +152,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
         return;
       }
       setScreenshotData(result);
+      persistDraft({ screenshotData: result });
       setError(null);
     };
     reader.readAsDataURL(file);
@@ -102,7 +162,19 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (!sale) {
+            const draftData = loadDraft();
+            setDraft(draftData);
+            setClientPhone(draftData.clientPhone);
+            setQuantity(Math.max(1, Number(draftData.quantity) || 1));
+            setCostPriceCnyInput(draftData.costPriceCny);
+            setSalePriceInput(draftData.salePrice);
+            setScreenshotData(draftData.screenshotData);
+            setStatus(draftData.status);
+          }
+          setOpen(true);
+        }}
         className={
           compact
             ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs font-semibold text-text transition hover:border-accent"
@@ -152,6 +224,10 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       return;
                     }
 
+                    if (!sale && typeof window !== "undefined") {
+                      window.localStorage.removeItem(SALE_DRAFT_KEY);
+                      setDraft(emptyDraft());
+                    }
                     setOpen(false);
                   });
                 }}
@@ -162,23 +238,47 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
 
                 <div>
                   <Label text="Дата заказа" />
-                  <input className={inputClass} type="date" name="orderDate" defaultValue={toDateInputValue(sale?.orderDate)} />
+                  <input
+                    className={inputClass}
+                    type="date"
+                    name="orderDate"
+                    defaultValue={sale ? toDateInputValue(sale.orderDate) : draft.orderDate}
+                    onChange={(e) => persistDraft({ orderDate: e.target.value })}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label text="Дата оплаты" />
-                    <input className={inputClass} type="date" name="paymentDate" defaultValue={toDateInputValue(sale?.paymentDate)} />
+                    <input
+                      className={inputClass}
+                      type="date"
+                      name="paymentDate"
+                      defaultValue={sale ? toDateInputValue(sale.paymentDate) : draft.paymentDate}
+                      onChange={(e) => persistDraft({ paymentDate: e.target.value })}
+                    />
                   </div>
                   <div>
                     <Label text="Куда оплатили" />
-                    <input className={inputClass} placeholder="Kaspi / карта / supplier" name="paidTo" defaultValue={sale?.paidTo ?? ""} />
+                    <input
+                      className={inputClass}
+                      placeholder="Kaspi / карта / supplier"
+                      name="paidTo"
+                      defaultValue={sale?.paidTo ?? draft.paidTo}
+                      onChange={(e) => persistDraft({ paidTo: e.target.value })}
+                    />
                   </div>
                 </div>
 
                 <div>
                   <Label text="Имя клиента" />
-                  <input className={inputClass} placeholder="Иван Иванов" name="clientName" defaultValue={sale?.clientName ?? ""} />
+                  <input
+                    className={inputClass}
+                    placeholder="Иван Иванов"
+                    name="clientName"
+                    defaultValue={sale?.clientName ?? draft.clientName}
+                    onChange={(e) => persistDraft({ clientName: e.target.value })}
+                  />
                 </div>
 
                 <div>
@@ -188,29 +288,56 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                     placeholder="+7 7771234567 или 87771234567"
                     name="clientPhone"
                     value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
+                    onChange={(e) => {
+                      setClientPhone(e.target.value);
+                      persistDraft({ clientPhone: e.target.value });
+                    }}
                   />
                 </div>
 
                 <div>
                   <Label text="Товар" />
-                  <input className={inputClass} placeholder="Название товара" name="productName" defaultValue={sale?.productName ?? ""} />
+                  <input
+                    className={inputClass}
+                    placeholder="Название товара"
+                    name="productName"
+                    defaultValue={sale?.productName ?? draft.productName}
+                    onChange={(e) => persistDraft({ productName: e.target.value })}
+                  />
                 </div>
 
                 <div>
                   <Label text="Трек код товара" />
-                  <input className={inputClass} placeholder="TRK123456789" name="productId" defaultValue={sale?.productId ?? ""} />
+                  <input
+                    className={inputClass}
+                    placeholder="TRK123456789"
+                    name="productId"
+                    defaultValue={sale?.productId ?? draft.productId}
+                    onChange={(e) => persistDraft({ productId: e.target.value })}
+                  />
                 </div>
 
                 <div>
                   <Label text="Ссылка на товар" />
-                  <input className={inputClass} placeholder="https://..." name="productLink" defaultValue={sale?.productLink ?? ""} />
+                  <input
+                    className={inputClass}
+                    placeholder="https://..."
+                    name="productLink"
+                    defaultValue={sale?.productLink ?? draft.productLink}
+                    onChange={(e) => persistDraft({ productLink: e.target.value })}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label text="Размер" />
-                    <input className={inputClass} placeholder="M, L, 42..." name="size" defaultValue={sale?.size ?? ""} />
+                    <input
+                      className={inputClass}
+                      placeholder="M, L, 42..."
+                      name="size"
+                      defaultValue={sale?.size ?? draft.size}
+                      onChange={(e) => persistDraft({ size: e.target.value })}
+                    />
                   </div>
                   <div>
                     <Label text="Количество" />
@@ -220,8 +347,12 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       name="quantity"
                       type="number"
                       min={1}
-                      defaultValue={sale?.quantity ?? 1}
-                      onChange={(e) => setQuantity(Math.max(1, Number(e.target.value || 1)))}
+                      defaultValue={sale?.quantity ?? draft.quantity}
+                      onChange={(e) => {
+                        const nextQty = Math.max(1, Number(e.target.value || 1));
+                        setQuantity(nextQty);
+                        persistDraft({ quantity: String(nextQty) });
+                      }}
                     />
                   </div>
                 </div>
@@ -235,7 +366,10 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       name="costPriceCny"
                       inputMode="decimal"
                       value={costPriceCnyInput}
-                      onChange={(e) => setCostPriceCnyInput(e.target.value)}
+                      onChange={(e) => {
+                        setCostPriceCnyInput(e.target.value);
+                        persistDraft({ costPriceCny: e.target.value });
+                      }}
                     />
                     <p className="mt-1 text-xs text-muted">Конвертация: 1 ¥ = 80 ₸. В тенге: {money(costPriceKzt)}</p>
                   </div>
@@ -247,7 +381,10 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       name="salePrice"
                       inputMode="decimal"
                       value={salePriceInput}
-                      onChange={(e) => setSalePriceInput(e.target.value)}
+                      onChange={(e) => {
+                        setSalePriceInput(e.target.value);
+                        persistDraft({ salePrice: e.target.value });
+                      }}
                     />
                     <p className="mt-1 text-xs text-muted">Это цена, которую платит клиент</p>
                   </div>
@@ -258,21 +395,30 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <button
                       type="button"
-                      onClick={() => setStatus("DONE")}
+                      onClick={() => {
+                        setStatus("DONE");
+                        persistDraft({ status: "DONE" });
+                      }}
                       className={`h-10 rounded-xl border text-sm transition ${status === "DONE" ? "border-emerald-400 bg-emerald-500/20 text-emerald-200" : "border-line bg-[#04111f] text-text hover:border-emerald-500/50"}`}
                     >
                       Выполнено
                     </button>
                     <button
                       type="button"
-                      onClick={() => setStatus("TODO")}
+                      onClick={() => {
+                        setStatus("TODO");
+                        persistDraft({ status: "TODO" });
+                      }}
                       className={`h-10 rounded-xl border text-sm transition ${status === "TODO" ? "border-rose-400 bg-rose-500/20 text-rose-200" : "border-line bg-[#04111f] text-text hover:border-rose-500/50"}`}
                     >
                       Доделать
                     </button>
                     <button
                       type="button"
-                      onClick={() => setStatus("WAITING")}
+                      onClick={() => {
+                        setStatus("WAITING");
+                        persistDraft({ status: "WAITING" });
+                      }}
                       className={`h-10 rounded-xl border text-sm transition ${status === "WAITING" ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-line bg-[#04111f] text-text hover:border-amber-500/50"}`}
                     >
                       Ожидание
