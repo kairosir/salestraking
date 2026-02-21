@@ -11,17 +11,35 @@ function money(value: number) {
   return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " ₸";
 }
 
+function decimalText(value: unknown) {
+  if (value == null) return "0";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && "toString" in value && typeof value.toString === "function") {
+    return value.toString();
+  }
+  return "0";
+}
+
 export default async function Home() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const sales = await prisma.sale.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      createdBy: { select: { name: true, email: true, username: true } },
-      updatedBy: { select: { name: true, email: true, username: true } }
-    }
-  });
+  const fetchSales = () =>
+    prisma.sale.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        createdBy: { select: { name: true, email: true, username: true } },
+        updatedBy: { select: { name: true, email: true, username: true } }
+      }
+    });
+
+  let sales: Awaited<ReturnType<typeof fetchSales>> = [];
+  try {
+    sales = await fetchSales();
+  } catch (error) {
+    console.error("Failed to load sales:", error);
+  }
 
   const totals = sales.reduce(
     (acc, sale) => {
@@ -45,13 +63,13 @@ export default async function Home() {
     screenshotData: s.screenshotData,
     size: s.size,
     quantity: s.quantity,
-    costPriceCny: s.costPriceCny.toString(),
-    costPrice: s.costPrice.toString(),
-    salePrice: s.salePrice.toString(),
-    margin: s.margin.toString(),
+    costPriceCny: decimalText(s.costPriceCny),
+    costPrice: decimalText(s.costPrice),
+    salePrice: decimalText(s.salePrice),
+    margin: decimalText(s.margin),
     createdAt: s.createdAt.toISOString(),
-    createdByName: s.createdBy.name || s.createdBy.username || s.createdBy.email || "Unknown",
-    updatedByName: s.updatedBy.name || s.updatedBy.username || s.updatedBy.email || "Unknown"
+    createdByName: s.createdBy?.name || s.createdBy?.username || s.createdBy?.email || "Unknown",
+    updatedByName: s.updatedBy?.name || s.updatedBy?.username || s.updatedBy?.email || "Unknown"
   }));
 
   return (

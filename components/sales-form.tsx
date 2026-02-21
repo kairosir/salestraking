@@ -22,6 +22,7 @@ type SaleRow = {
 };
 
 const CNY_TO_KZT = 80;
+const MAX_IMAGE_BYTES = 1_100_000;
 
 const inputClass =
   "h-11 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
@@ -98,6 +99,10 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
       setError("Можно загружать только изображения");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError("Скрин слишком большой. Максимум примерно 1 МБ.");
       return;
     }
 
