@@ -35,7 +35,7 @@ export function ChangePasswordForm() {
       <button
         type="submit"
         disabled={pending}
-        className="h-11 w-full rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110 disabled:opacity-70"
+        className="btn-primary h-11 w-full rounded-xl text-sm font-semibold transition disabled:opacity-70"
       >
         {pending ? "Сохранение..." : "Сменить пароль"}
       </button>

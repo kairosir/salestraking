@@ -60,7 +60,7 @@ export default async function LoginPage({
             </div>
           </label>
 
-          <button type="submit" className="h-11 w-full rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110">
+          <button type="submit" className="btn-primary h-11 w-full rounded-xl text-sm font-semibold transition disabled:opacity-70">
             Войти в таблицу
           </button>
         </form>

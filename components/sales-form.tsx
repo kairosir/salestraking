@@ -310,7 +310,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
         className={
           compact
             ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs font-semibold text-text transition hover:border-accent"
-            : "inline-flex items-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-[#00131f] shadow-glow transition hover:brightness-110"
+            : "btn-primary inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-glow transition"
         }
       >
         {sale ? <Pencil size={14} /> : <Plus size={16} />}
@@ -635,7 +635,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                   <button
                     type="submit"
                     disabled={pending}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110 disabled:opacity-70"
+                    className="btn-primary inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition disabled:opacity-70"
                   >
                     {pending && <Loader2 className="animate-spin" size={16} />}
                     {sale ? "Сохранить" : "Добавить"}
@@ -690,7 +690,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 type="button"
                 onClick={applyCroppedImage}
                 disabled={cropPending}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110 disabled:opacity-70"
+                className="btn-primary inline-flex h-10 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition disabled:opacity-70"
               >
                 {cropPending && <Loader2 size={14} className="animate-spin" />}
                 Применить

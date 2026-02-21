@@ -252,14 +252,14 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <button
                 type="button"
                 onClick={() => setMobileView("cards")}
-                className={`rounded-lg px-2 py-1 text-xs ${mobileView === "cards" ? "bg-accent text-[#00131f]" : "text-muted"}`}
+                className={`rounded-lg px-2 py-1 text-xs ${mobileView === "cards" ? "btn-primary" : "text-muted"}`}
               >
                 <LayoutGrid size={14} />
               </button>
               <button
                 type="button"
                 onClick={() => setMobileView("list")}
-                className={`rounded-lg px-2 py-1 text-xs ${mobileView === "list" ? "bg-accent text-[#00131f]" : "text-muted"}`}
+                className={`rounded-lg px-2 py-1 text-xs ${mobileView === "list" ? "btn-primary" : "text-muted"}`}
               >
                 <List size={14} />
               </button>
