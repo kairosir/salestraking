@@ -30,22 +30,22 @@ async function upsertUser(params: {
 }
 
 async function main() {
-  const admin = await upsertUser({
-    email: "admin@salestracker.local",
-    username: "admin",
-    name: "Admin",
-    password: "admin12345"
+  const dasha = await upsertUser({
+    email: "dasha@aimuselim.store",
+    username: "dasha",
+    name: "Dasha",
+    password: "d4502136d"
   });
 
-  const test = await upsertUser({
-    email: "test@salestracker.local",
-    username: "test",
-    name: "Test User",
-    password: "test1234"
+  const aim = await upsertUser({
+    email: "aim@aimuselim.store",
+    username: "aim",
+    name: "Aim",
+    password: "muslim"
   });
 
-  console.log(`Seeded user: ${admin.username} / admin12345`);
-  console.log(`Seeded user: ${test.username} / test1234`);
+  console.log(`Seeded user: ${dasha.username} / d4502136d`);
+  console.log(`Seeded user: ${aim.username} / muslim`);
 }
 
 main()

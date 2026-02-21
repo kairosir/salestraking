@@ -79,7 +79,7 @@ export default async function Home() {
         <header className="rounded-3xl border border-line bg-[#031021cc] p-4 backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-muted">SalesTracker</p>
+              <p className="text-sm text-muted">Aimuselim Online Store</p>
               <h1 className="text-2xl font-semibold">Отслеживание продаж</h1>
             </div>
 

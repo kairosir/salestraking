@@ -5,8 +5,8 @@ import "./globals.css";
 const manrope = Manrope({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "SalesTracker",
-  description: "Отслеживание продаж"
+  title: "Aimuselim Online Store",
+  description: "Aimuselim Online Store - tracking dashboard"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
