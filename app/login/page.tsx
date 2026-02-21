@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { loginWithCredentials } from "@/app/actions";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const authErrors: Record<string, string> = {
   Configuration: "Ошибка конфигурации входа. Проверьте переменные окружения.",
@@ -23,7 +24,10 @@ export default async function LoginPage({
   return (
     <main className="min-h-screen bg-mesh px-4 py-10">
       <div className="mx-auto max-w-md rounded-3xl border border-line bg-card/80 p-6 shadow-2xl backdrop-blur">
-        <p className="mb-1 text-sm text-muted">Aimuselim Online Store</p>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">Aimuselim Online Store</p>
+          <ThemeToggle />
+        </div>
         <h1 className="mb-4 text-2xl font-semibold">Вход в личный кабинет</h1>
 
         {errorMessage && <div className="mb-4 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">{errorMessage}</div>}

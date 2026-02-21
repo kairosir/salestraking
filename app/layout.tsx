@@ -17,6 +17,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('salestraking:theme');if(t==='dark'){document.documentElement.classList.add('theme-dark');document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.classList.remove('theme-dark');document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();"
+          }}
+        />
+      </head>
       <body className={manrope.className}>{children}</body>
     </html>
   );

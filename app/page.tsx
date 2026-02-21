@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { SalesForm } from "@/components/sales-form";
 import { SalesTable } from "@/components/sales-table";
 import { CalculationCard } from "@/components/calculation-card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { logoutAction } from "@/app/actions";
 
 function money(value: number) {
@@ -99,6 +100,7 @@ export default async function Home() {
             </div>
 
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <div className="hidden items-center gap-2 rounded-2xl border border-line bg-card px-3 py-2 text-sm sm:flex">
                 <User size={15} className="text-muted" />
                 <span>{session.user.name || session.user.email}</span>

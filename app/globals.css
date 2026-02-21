@@ -4,6 +4,28 @@
 
 :root {
   color-scheme: light;
+  --bg: 248 239 228;
+  --card: 236 221 201;
+  --line: 196 160 113;
+  --text: 44 34 23;
+  --muted: 111 85 58;
+  --accent: 185 142 88;
+  --success: 41 128 79;
+  --mesh-a: 244 230 210;
+  --mesh-b: 205 167 121;
+}
+
+html.theme-dark {
+  color-scheme: dark;
+  --bg: 17 18 20;
+  --card: 30 32 36;
+  --line: 64 68 76;
+  --text: 231 234 239;
+  --muted: 159 165 175;
+  --accent: 199 157 102;
+  --success: 91 200 140;
+  --mesh-a: 44 46 52;
+  --mesh-b: 82 66 45;
 }
 
 * {
@@ -14,8 +36,9 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: "Manrope", "Segoe UI", sans-serif;
-  background: #f2ddcc;
-  color: #2f2418;
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 a {

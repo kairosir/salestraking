@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { NotificationSettings } from "@/components/notification-settings";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function money(value: number) {
   const safe = Number.isFinite(value) ? value : 0;
@@ -80,9 +81,12 @@ export default async function AccountPage() {
               <p className="text-sm text-muted">Личный кабинет</p>
               <h1 className="text-2xl font-semibold">Профиль пользователя</h1>
             </div>
-            <Link href="/" className="rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text">
-              К таблице
-            </Link>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Link href="/" className="rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text">
+                К таблице
+              </Link>
+            </div>
           </div>
         </header>
 
