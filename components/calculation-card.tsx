@@ -33,8 +33,8 @@ export function CalculationCard({ totalNetMargin }: { totalNetMargin: number }) 
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4">
-          <div className="w-full max-w-lg rounded-3xl border border-line bg-[#020b14] p-5">
+        <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
+          <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-3xl sm:p-5">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl font-semibold text-text">Расчет общей маржи</h3>

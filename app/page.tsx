@@ -50,7 +50,7 @@ export default async function Home() {
     },
     { revenue: 0, margin: 0 }
   );
-  const totalNetMargin = totals.margin * 0.95;
+  const totalNetMargin = totals.margin;
 
   const uiSales = sales.map((s) => ({
     id: s.id,
@@ -104,7 +104,7 @@ export default async function Home() {
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
             <StatCard icon={<DollarSign size={18} />} label="Выручка" value={money(totals.revenue)} />
-            <StatCard icon={<TrendingUp size={18} />} label="Маржа (-5%)" value={money(totalNetMargin)} accent />
+            <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
             <CalculationCard totalNetMargin={totalNetMargin} />
           </div>
         </header>

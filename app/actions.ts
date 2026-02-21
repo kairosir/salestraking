@@ -127,7 +127,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const salePrice = Number(data.salePrice);
     const quantity = Math.max(1, Number(data.quantity) || 1);
     const costPrice = costPriceCny * CNY_TO_KZT;
-    const margin = (salePrice - costPrice) * quantity;
+    const margin = (salePrice - costPrice) * quantity * 0.95;
 
     await prisma.sale.create({
       data: {
@@ -212,7 +212,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const salePrice = Number(data.salePrice);
     const quantity = Math.max(1, Number(data.quantity) || 1);
     const costPrice = costPriceCny * CNY_TO_KZT;
-    const margin = (salePrice - costPrice) * quantity;
+    const margin = (salePrice - costPrice) * quantity * 0.95;
 
     await prisma.sale.update({
       where: { id },
