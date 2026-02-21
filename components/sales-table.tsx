@@ -143,91 +143,103 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         </div>
       </div>
 
-      <div className="hidden overflow-hidden rounded-3xl border border-line bg-card/70 lg:block">
-        <div className="grid grid-cols-[1.3fr_1fr_1.2fr_0.8fr_0.7fr_1fr_1fr_1fr_1.2fr_0.9fr] gap-3 border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
-          <span>Клиент</span>
-          <span>Телефон</span>
-          <span>Товар</span>
-          <span>Размер</span>
-          <span>Кол-во</span>
-          <span>Цена товара</span>
-          <span>Цена продажи</span>
-          <span>Маржа</span>
-          <span>Автор/дата</span>
-          <span className="text-right">Действия</span>
-        </div>
+      <div className="hidden rounded-3xl border border-line bg-card/70 lg:block">
+        <div className="overflow-x-auto">
+          <div className="min-w-[1200px]">
+            <div className="grid grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.8fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
+              <span>Клиент</span>
+              <span>Телефон</span>
+              <span>Товар</span>
+              <span>Размер</span>
+              <span>Кол-во</span>
+              <span>Цена товара</span>
+              <span>Цена продажи</span>
+              <span>Маржа</span>
+              <span>Выручка</span>
+              <span>Автор/дата</span>
+              <span className="text-right">Действия</span>
+            </div>
 
-        <div className="divide-y divide-line">
-          {filtered.map((sale) => {
-            const whatsapp = waLink(sale.clientPhone);
+            <div className="divide-y divide-line">
+              {filtered.map((sale) => {
+                const whatsapp = waLink(sale.clientPhone);
+                const revenue = Number(sale.salePrice) * sale.quantity;
 
-            return (
-              <div key={sale.id} className="grid items-center gap-3 p-4 lg:grid-cols-[1.3fr_1fr_1.2fr_0.8fr_0.7fr_1fr_1fr_1fr_1.2fr_0.9fr]">
-                <p className="font-medium text-text">{sale.clientName}</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-text">{sale.clientPhone}</p>
-                  {whatsapp && (
-                    <a
-                      href={whatsapp}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 transition hover:bg-emerald-500/30"
-                      title="Открыть WhatsApp"
-                    >
-                      <MessageCircle size={14} />
-                    </a>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-text">{sale.productName}</p>
-                  {sale.productLink && (
-                    <a href={sale.productLink} target="_blank" className="text-xs text-accent underline-offset-2 hover:underline" rel="noreferrer">
-                      Ссылка
-                    </a>
-                  )}
-                </div>
-                <p className="text-sm text-text">{sale.size || "-"}</p>
-                <p className="text-sm text-text">{sale.quantity}</p>
-                <p className="text-sm text-text">{money(sale.costPrice)}</p>
-                <p className="text-sm text-text">{money(sale.salePrice)}</p>
-                <p className="text-sm font-semibold text-success">{money(sale.margin)}</p>
-                <p className="text-xs text-muted">
-                  {sale.createdByName} · {dateFmt(sale.createdAt)}
-                  <br />
-                  изм. {sale.updatedByName}
-                </p>
+                return (
+                  <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.8fr]">
+                    <p className="truncate text-sm font-medium text-text">{sale.clientName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-xs text-text">{sale.clientPhone}</p>
+                      {whatsapp && (
+                        <a
+                          href={whatsapp}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 transition hover:bg-emerald-500/30"
+                          title="Открыть WhatsApp"
+                        >
+                          <MessageCircle size={12} />
+                        </a>
+                      )}
+                    </div>
+                    <div>
+                      <p className="truncate text-xs text-text">{sale.productName}</p>
+                      {sale.productLink && (
+                        <a href={sale.productLink} target="_blank" className="text-[11px] text-accent underline-offset-2 hover:underline" rel="noreferrer">
+                          Ссылка
+                        </a>
+                      )}
+                    </div>
+                    <p className="text-xs text-text">{sale.size || "-"}</p>
+                    <p className="text-xs text-text">{sale.quantity}</p>
+                    <p className="text-xs text-text">{money(sale.costPrice)}</p>
+                    <p className="text-xs text-text">{money(sale.salePrice)}</p>
+                    <p className="text-xs font-semibold text-success">{money(sale.margin)}</p>
+                    <p className="text-xs text-text">{money(revenue)}</p>
+                    <p className="text-[11px] text-muted">
+                      {sale.createdByName} · {dateFmt(sale.createdAt)}
+                      <br />
+                      изм. {sale.updatedByName}
+                    </p>
 
-                <div className="flex items-center justify-end gap-2">
-                  <SalesForm
-                    sale={{
-                      id: sale.id,
-                      clientName: sale.clientName,
-                      clientPhone: sale.clientPhone,
-                      productName: sale.productName,
-                      productLink: sale.productLink,
-                      size: sale.size,
-                      quantity: sale.quantity,
-                      costPrice: sale.costPrice,
-                      salePrice: sale.salePrice
-                    }}
-                  />
+                    <div className="flex items-center justify-end gap-1.5">
+                      <SalesForm
+                        compact
+                        sale={{
+                          id: sale.id,
+                          clientName: sale.clientName,
+                          clientPhone: sale.clientPhone,
+                          productName: sale.productName,
+                          productLink: sale.productLink,
+                          size: sale.size,
+                          quantity: sale.quantity,
+                          costPrice: sale.costPrice,
+                          salePrice: sale.salePrice
+                        }}
+                      />
 
-                  <form action={deleteSaleAction}>
-                    <input type="hidden" name="id" value={sale.id} />
-                    <button type="submit" className="rounded-xl border border-line p-2 text-muted transition hover:border-red-400 hover:text-red-300">
-                      <Trash2 size={16} />
-                    </button>
-                  </form>
-                </div>
-              </div>
-            );
-          })}
+                      <form action={deleteSaleAction}>
+                        <input type="hidden" name="id" value={sale.id} />
+                        <button
+                          type="submit"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line text-muted transition hover:border-red-400 hover:text-red-300"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className={`space-y-3 lg:hidden ${mobileView === "cards" ? "block" : "hidden"}`}>
         {filtered.map((sale) => {
           const whatsapp = waLink(sale.clientPhone);
+          const revenue = Number(sale.salePrice) * sale.quantity;
 
           return (
             <article key={sale.id} className="rounded-2xl border border-line bg-card/70 p-3">
@@ -256,18 +268,14 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <p className="mt-1 text-xs text-muted">
                 Размер: {sale.size || "-"} · Кол-во: {sale.quantity}
               </p>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                <div className="rounded-lg border border-line bg-[#031325] p-2">
-                  <p className="text-muted">Товар</p>
-                  <p className="text-text">{money(sale.costPrice)}</p>
-                </div>
-                <div className="rounded-lg border border-line bg-[#031325] p-2">
-                  <p className="text-muted">Продажа</p>
-                  <p className="text-text">{money(sale.salePrice)}</p>
-                </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-lg border border-line bg-[#031325] p-2">
                   <p className="text-muted">Маржа</p>
                   <p className="font-semibold text-success">{money(sale.margin)}</p>
+                </div>
+                <div className="rounded-lg border border-line bg-[#031325] p-2">
+                  <p className="text-muted">Выручка</p>
+                  <p className="text-text">{money(revenue)}</p>
                 </div>
               </div>
 
@@ -288,11 +296,12 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     costPrice: sale.costPrice,
                     salePrice: sale.salePrice
                   }}
+                  compact
                 />
                 <form action={deleteSaleAction}>
                   <input type="hidden" name="id" value={sale.id} />
-                  <button type="submit" className="rounded-xl border border-line p-2 text-muted transition hover:border-red-400 hover:text-red-300">
-                    <Trash2 size={16} />
+                  <button type="submit" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line text-muted transition hover:border-red-400 hover:text-red-300">
+                    <Trash2 size={14} />
                   </button>
                 </form>
               </div>
@@ -302,18 +311,23 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       </div>
 
       <div className={`space-y-2 lg:hidden ${mobileView === "list" ? "block" : "hidden"}`}>
-        {filtered.map((sale) => (
-          <div key={sale.id} className="rounded-xl border border-line bg-card/70 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="font-medium text-text">{sale.clientName}</p>
-                <p className="text-xs text-muted">{sale.productName}</p>
+        {filtered.map((sale) => {
+          const revenue = Number(sale.salePrice) * sale.quantity;
+
+          return (
+            <div key={sale.id} className="rounded-xl border border-line bg-card/70 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium text-text">{sale.clientName}</p>
+                  <p className="text-xs text-muted">{sale.productName}</p>
+                </div>
+                <p className="text-sm font-semibold text-success">{money(sale.margin)}</p>
               </div>
-              <p className="text-sm font-semibold text-success">{money(sale.margin)}</p>
+              <p className="mt-1 text-xs text-muted">Выручка: {money(revenue)}</p>
+              <p className="text-xs text-muted">{sale.clientPhone}</p>
             </div>
-            <p className="mt-1 text-xs text-muted">{sale.clientPhone}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

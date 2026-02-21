@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Pencil, Plus, X } from "lucide-react";
 import { createSaleAction, updateSaleAction } from "@/app/actions";
 
 type SaleRow = {
@@ -57,7 +57,7 @@ function formatPhone(value: string) {
   return out;
 }
 
-export function SalesForm({ sale }: { sale?: SaleRow }) {
+export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +75,14 @@ export function SalesForm({ sale }: { sale?: SaleRow }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-[#00131f] shadow-glow transition hover:brightness-110"
+        className={
+          compact
+            ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs font-semibold text-text transition hover:border-accent"
+            : "inline-flex items-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-[#00131f] shadow-glow transition hover:brightness-110"
+        }
       >
-        <Plus size={16} />
-        {sale ? "Изменить" : "Добавить"}
+        {sale ? <Pencil size={14} /> : <Plus size={16} />}
+        {compact ? (sale ? "Изм" : "Добав") : sale ? "Изменить" : "Добавить"}
       </button>
 
       {open && (
