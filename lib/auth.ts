@@ -13,6 +13,8 @@ const credentialsSchema = z.object({
   password: z.string().min(6)
 });
 
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
 export const authProviderFlags = {
   google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   apple: Boolean(process.env.APPLE_ID && process.env.APPLE_SECRET)
@@ -72,6 +74,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers,
+  secret: authSecret,
+  trustHost: true,
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user) token.id = user.id;

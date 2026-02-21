@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const isAuthApi = pathname.startsWith("/api/auth");
@@ -8,10 +10,9 @@ export async function middleware(req: NextRequest) {
 
   if (isAuthApi) return NextResponse.next();
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ req, secret: authSecret });
   const isLoggedIn = Boolean(token);
 
-  // Allow guests to open the login page.
   if (!isLoggedIn && isLoginPage) {
     return NextResponse.next();
   }
