@@ -81,9 +81,11 @@ export default async function AccountPage() {
               <p className="text-sm text-muted">Личный кабинет</p>
               <h1 className="text-2xl font-semibold">Профиль пользователя</h1>
             </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Link href="/" className="rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="w-full sm:w-auto">
+                <ThemeToggle />
+              </div>
+              <Link href="/" className="inline-flex h-10 w-full items-center justify-center rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text sm:w-auto">
                 К таблице
               </Link>
             </div>
