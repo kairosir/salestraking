@@ -5,7 +5,13 @@ import { createPortal } from "react-dom";
 import { Calculator, X } from "lucide-react";
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value) + " ₸";
+  const safe = Number.isFinite(value) ? value : 0;
+  const sign = safe < 0 ? -1 : 1;
+  const abs = Math.abs(safe);
+  const base = Math.floor(abs);
+  const frac = abs - base;
+  const rounded = frac > 0.5 ? base + 1 : base;
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(sign * rounded) + " ₸";
 }
 
 type CalcSale = { createdAt: string; margin: number };

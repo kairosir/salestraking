@@ -40,7 +40,12 @@ function Label({ text, required }: { text: string; required?: boolean }) {
 
 function money(value: number) {
   const safe = Number.isFinite(value) ? value : 0;
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(safe) + " ₸";
+  const sign = safe < 0 ? -1 : 1;
+  const abs = Math.abs(safe);
+  const base = Math.floor(abs);
+  const frac = abs - base;
+  const rounded = frac > 0.5 ? base + 1 : base;
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(sign * rounded) + " ₸";
 }
 
 function parseFlexibleNumber(value: string) {
@@ -116,6 +121,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const [costPriceCnyInput, setCostPriceCnyInput] = useState<string>(sale?.costPriceCny ?? "");
   const [salePriceInput, setSalePriceInput] = useState<string>(sale?.salePrice ?? "");
   const [screenshotData, setScreenshotData] = useState<string>(sale?.screenshotData ?? "");
+  const [screenshotChanged, setScreenshotChanged] = useState(false);
   const [status, setStatus] = useState<"DONE" | "TODO" | "WAITING">(sale?.status ?? "WAITING");
 
   const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
@@ -157,6 +163,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
         return;
       }
       setScreenshotData(result);
+      setScreenshotChanged(true);
       persistDraft({ screenshotData: result });
       setError(null);
     };
@@ -168,6 +175,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
       <button
         type="button"
         onClick={() => {
+          setScreenshotChanged(false);
           if (!sale) {
             const draftData = loadDraft();
             setDraft(draftData);
@@ -242,7 +250,11 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 }}
                 className="space-y-4"
               >
-                <input type="hidden" name="screenshotData" value={screenshotData} />
+                <input
+                  type="hidden"
+                  name="screenshotData"
+                  value={sale && !screenshotChanged && !screenshotData ? "__KEEP__" : screenshotData}
+                />
                 <input type="hidden" name="status" value={status} />
 
                 <div>

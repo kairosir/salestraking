@@ -17,6 +17,7 @@ type Sale = {
   orderDate: string | null;
   paymentDate: string | null;
   screenshotData: string | null;
+  hasScreenshot?: boolean;
   size: string | null;
   quantity: number;
   costPriceCny: string;
@@ -35,7 +36,12 @@ type MobileView = "cards" | "list";
 function money(value: string | number) {
   const numeric = Number(value);
   const safe = Number.isFinite(numeric) ? numeric : 0;
-  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(safe) + " ₸";
+  const sign = safe < 0 ? -1 : 1;
+  const abs = Math.abs(safe);
+  const base = Math.floor(abs);
+  const frac = abs - base;
+  const rounded = frac > 0.5 ? base + 1 : base;
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(sign * rounded) + " ₸";
 }
 
 function dateFmt(value: string) {
@@ -93,6 +99,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [sort, setSort] = useState<SortMode>("newest");
   const [mobileView, setMobileView] = useState<MobileView>("cards");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [screenshotCache, setScreenshotCache] = useState<Record<string, string>>({});
   const [markingDone, startMarkingDone] = useTransition();
 
   const authors = useMemo(() => {
@@ -261,7 +268,21 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setSelectedSale(sale)}
+                        onClick={async () => {
+                          setSelectedSale(sale);
+                          if (sale.hasScreenshot && !screenshotCache[sale.id]) {
+                            try {
+                              const res = await fetch(`/api/sales/${sale.id}/screenshot`, { cache: "no-store" });
+                              if (!res.ok) return;
+                              const json = (await res.json()) as { screenshotData?: string | null };
+                              if (json.screenshotData) {
+                                setScreenshotCache((prev) => ({ ...prev, [sale.id]: json.screenshotData as string }));
+                              }
+                            } catch {
+                              // Ignore screenshot loading failures to keep modal stable.
+                            }
+                          }
+                        }}
                         className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs text-text transition hover:border-accent"
                       >
                         <Eye size={14} />
@@ -359,7 +380,21 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedSale(sale)}
+                  onClick={async () => {
+                    setSelectedSale(sale);
+                    if (sale.hasScreenshot && !screenshotCache[sale.id]) {
+                      try {
+                        const res = await fetch(`/api/sales/${sale.id}/screenshot`, { cache: "no-store" });
+                        if (!res.ok) return;
+                        const json = (await res.json()) as { screenshotData?: string | null };
+                        if (json.screenshotData) {
+                          setScreenshotCache((prev) => ({ ...prev, [sale.id]: json.screenshotData as string }));
+                        }
+                      } catch {
+                        // Ignore screenshot loading failures to keep modal stable.
+                      }
+                    }
+                  }}
                   className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs text-text"
                 >
                   <Eye size={14} />
@@ -462,9 +497,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               </a>
             )}
 
-            {selectedSale.screenshotData && (
+            {(selectedSale.screenshotData || screenshotCache[selectedSale.id]) && (
               <div className="mt-4 overflow-hidden rounded-2xl border border-line">
-                <img src={selectedSale.screenshotData} alt="Скрин товара" className="max-h-[320px] w-full object-contain bg-[#04111f]" />
+                <img
+                  src={selectedSale.screenshotData || screenshotCache[selectedSale.id]}
+                  alt="Скрин товара"
+                  className="max-h-[320px] w-full object-contain bg-[#04111f]"
+                />
               </div>
             )}
 
