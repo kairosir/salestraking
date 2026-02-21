@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: "Aimuselim Online Store - tracking dashboard",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icon-store.png",
-    shortcut: "/icon-store.png",
+    icon: "/logo-top.png",
+    shortcut: "/logo-top.png",
     apple: "/icon-store.png"
   },
   appleWebApp: {
