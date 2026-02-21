@@ -89,8 +89,8 @@ export default async function Home() {
         <header className="rounded-3xl border border-line bg-card/75 p-4 backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="overflow-hidden rounded-xl border border-line bg-card p-1.5">
-                <Image src="/icon-store.png" alt="Store icon" width={34} height={34} className="h-[34px] w-[34px] object-cover" />
+              <div className="overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-glow">
+                <Image src="/icon-store.png" alt="Store icon" width={56} height={56} className="h-12 w-12 object-cover sm:h-14 sm:w-14" />
               </div>
               <div>
                 <p className="text-sm text-muted">Aimuselim Online Store</p>
