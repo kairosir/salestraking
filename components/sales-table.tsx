@@ -92,6 +92,29 @@ function safeTime(value: string) {
   return Number.isFinite(time) ? time : 0;
 }
 
+function normalizePhone(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function normalizeName(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function clientGroupKey(sale: Pick<Sale, "clientName" | "clientPhone" | "id">) {
+  const phone = normalizePhone(sale.clientPhone);
+  if (phone) return `p:${phone}`;
+  const name = normalizeName(sale.clientName);
+  if (name) return `n:${name}`;
+  return `u:${sale.id}`;
+}
+
+function colorFromKey(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  return `hsl(${hue} 62% 42%)`;
+}
+
 export function SalesTable({ sales }: { sales: Sale[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -156,6 +179,9 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
     const byAuthor = byQuery.filter((item) => (author === "all" ? true : item.createdByName === author));
 
     return [...byAuthor].sort((a, b) => {
+      const groupCmp = clientGroupKey(a).localeCompare(clientGroupKey(b), "ru");
+      if (groupCmp !== 0) return groupCmp;
+
       const aDone = a.status === "DONE";
       const bDone = b.status === "DONE";
       if (aDone !== bDone) return aDone ? 1 : -1;
@@ -260,6 +286,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               {filtered.map((sale) => {
                 const whatsapp = waLink(sale.clientPhone);
                 const revenue = Number(sale.salePrice) * sale.quantity;
+                const clientColor = colorFromKey(clientGroupKey(sale));
 
                 return (
                   <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[0.2fr_1fr_0.95fr_1.25fr_0.6fr_0.5fr_0.75fr_0.75fr_0.75fr_0.75fr_1fr_0.95fr]">
@@ -267,7 +294,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                       <span className={`h-7 w-1.5 rounded-full ${statusColor(sale.status)}`} />
                       {sale.status === "DONE" && <Check size={12} className="text-emerald-300" />}
                     </div>
-                    <p className="break-words text-sm font-medium leading-4 text-text">{sale.clientName}</p>
+                    <div className="flex items-center gap-2 border-l-2 pl-2" style={{ borderLeftColor: clientColor }}>
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: clientColor }} />
+                      <p className="break-words text-sm font-medium leading-4 text-text">{sale.clientName}</p>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <p className="break-all text-xs leading-4 text-text">{sale.clientPhone}</p>
                       {whatsapp && (
@@ -353,6 +383,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         {filtered.map((sale) => {
           const whatsapp = waLink(sale.clientPhone);
           const revenue = Number(sale.salePrice) * sale.quantity;
+          const clientColor = colorFromKey(clientGroupKey(sale));
 
           return (
             <article key={sale.id} className="rounded-2xl border border-line bg-card/70 p-3">
@@ -363,7 +394,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     {sale.status === "DONE" && <Check size={12} className="text-emerald-300" />}
                     <p className="text-[11px] text-muted">{statusLabel(sale.status)}</p>
                   </div>
-                  <p className="text-base font-semibold text-text">{sale.clientName}</p>
+                  <div className="flex items-center gap-2 border-l-2 pl-2" style={{ borderLeftColor: clientColor }}>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: clientColor }} />
+                    <p className="text-base font-semibold text-text">{sale.clientName}</p>
+                  </div>
                   <div className="flex items-center gap-2">
                     <p className="text-xs text-muted">{sale.clientPhone}</p>
                     {whatsapp && (
@@ -443,6 +477,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       <div className={`space-y-2 lg:hidden ${mobileView === "list" ? "block" : "hidden"}`}>
         {filtered.map((sale) => {
           const revenue = Number(sale.salePrice) * sale.quantity;
+          const clientColor = colorFromKey(clientGroupKey(sale));
 
           return (
             <div key={sale.id} className="rounded-xl border border-line bg-card/70 p-3">
@@ -453,7 +488,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     {sale.status === "DONE" && <Check size={12} className="text-emerald-300" />}
                     <p className="text-[11px] text-muted">{statusLabel(sale.status)}</p>
                   </div>
-                  <p className="font-medium text-text">{sale.clientName}</p>
+                  <div className="flex items-center gap-2 border-l-2 pl-2" style={{ borderLeftColor: clientColor }}>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: clientColor }} />
+                    <p className="font-medium text-text">{sale.clientName}</p>
+                  </div>
                   <p className="text-xs text-muted">{sale.productName}</p>
                 </div>
                 <p className="text-sm font-semibold text-success">{money(sale.margin)}</p>
