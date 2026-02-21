@@ -24,15 +24,32 @@ export async function POST(req: Request) {
 
   if (!chatId) return NextResponse.json({ ok: true });
 
-  if (text === "/start" || text.toLowerCase() === "start") {
+  const parts = text.split(/\s+/).filter(Boolean);
+  const command = (parts[0] || "").toLowerCase();
+  const loginHint = (parts[1] || "").trim().toLowerCase();
+
+  if (command === "/start" || command === "start") {
+    let userId: string | null = null;
+    if (loginHint) {
+      const linkedUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ username: loginHint }, { email: loginHint }]
+        },
+        select: { id: true }
+      });
+      userId = linkedUser?.id ?? null;
+    }
+
     await prisma.notificationRecipient.upsert({
       where: { telegramChatId: chatId },
       update: {
+        userId,
         telegramUsername: username,
         telegramEnabled: true,
         isActive: true
       },
       create: {
+        userId,
         telegramChatId: chatId,
         telegramUsername: username,
         telegramEnabled: true,
@@ -43,12 +60,15 @@ export async function POST(req: Request) {
 
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (token) {
+      const linkMessage = loginHint
+        ? "Ваш Telegram привязан к аккаунту. Уведомления включены."
+        : "Telegram подключен. Для привязки к аккаунту отправьте: /start ваш_логин";
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          text: "Вы подключили уведомления Salestraking. Сообщения о статусах товаров будут приходить автоматически."
+          text: `Вы подключили уведомления Salestraking.\n${linkMessage}`
         })
       }).catch(() => null);
     }

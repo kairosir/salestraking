@@ -5,6 +5,7 @@ import { compare, hash } from "bcryptjs";
 import { auth, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saleSchema } from "@/lib/sale-schema";
+import { runNotifications, runTestNotifications } from "@/lib/notifications";
 import type { SaleStatus } from "@prisma/client";
 
 const CNY_TO_KZT = 80;
@@ -283,5 +284,61 @@ export async function markSaleDoneAction(id: string): Promise<{ ok: boolean; err
   } catch (error) {
     console.error("markSaleDoneAction failed:", error);
     return { ok: false, error: "Не удалось отметить товар как выданный" };
+  }
+}
+
+export async function addNotificationEmailAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    if (!email || !email.includes("@")) return { ok: false, error: "Введите корректный email" };
+
+    await prisma.notificationRecipient.upsert({
+      where: { email },
+      update: {
+        userId: session.user.id,
+        emailEnabled: true,
+        isActive: true
+      },
+      create: {
+        userId: session.user.id,
+        email,
+        emailEnabled: true,
+        telegramEnabled: false,
+        isActive: true
+      }
+    });
+
+    revalidatePath("/account");
+    return { ok: true };
+  } catch (error) {
+    console.error("addNotificationEmailAction failed:", error);
+    return { ok: false, error: "Не удалось добавить email" };
+  }
+}
+
+export async function sendTestNotificationsAction(): Promise<{ ok: boolean; sent?: number; skipped?: number; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+    const result = await runTestNotifications();
+    return { ok: true, sent: result.sent, skipped: result.skipped };
+  } catch (error) {
+    console.error("sendTestNotificationsAction failed:", error);
+    return { ok: false, error: "Не удалось отправить тестовые уведомления" };
+  }
+}
+
+export async function runNotificationsNowAction(): Promise<{ ok: boolean; sent?: number; skipped?: number; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+    const result = await runNotifications();
+    return { ok: true, sent: result.sent, skipped: result.skipped };
+  } catch (error) {
+    console.error("runNotificationsNowAction failed:", error);
+    return { ok: false, error: "Не удалось запустить рассылку" };
   }
 }

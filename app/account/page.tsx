@@ -4,6 +4,7 @@ import { DollarSign, KeyRound, User } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { NotificationSettings } from "@/components/notification-settings";
 
 function money(value: number) {
   const safe = Number.isFinite(value) ? value : 0;
@@ -19,7 +20,10 @@ export default async function AccountPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [mySales, allMySalesForRevenue, myAgg] = await Promise.all([
+  const recipientWhere: Array<{ userId: string } | { email: string }> = [{ userId: session.user.id }];
+  if (session.user.email) recipientWhere.push({ email: session.user.email });
+
+  const [mySales, allMySalesForRevenue, myAgg, recipients] = await Promise.all([
     prisma.sale.findMany({
       where: { createdById: session.user.id },
       orderBy: { createdAt: "desc" },
@@ -33,6 +37,19 @@ export default async function AccountPage() {
       where: { createdById: session.user.id },
       _sum: { margin: true },
       _count: { id: true }
+    }),
+    prisma.notificationRecipient.findMany({
+      where: { OR: recipientWhere },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        email: true,
+        telegramChatId: true,
+        telegramUsername: true,
+        emailEnabled: true,
+        telegramEnabled: true,
+        isActive: true
+      }
     })
   ]);
 
@@ -85,6 +102,8 @@ export default async function AccountPage() {
             </div>
           </div>
         </section>
+
+        <NotificationSettings recipients={recipients} loginHint={session.user.email || session.user.name || "your-login"} />
       </div>
     </main>
   );

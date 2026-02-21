@@ -115,6 +115,34 @@ async function sendEmailMessage(email: string, subject: string, text: string) {
   return { ok: true as const };
 }
 
+export async function runTestNotifications() {
+  const recipients = await prisma.notificationRecipient.findMany({
+    where: { isActive: true }
+  });
+  const activeRecipients = recipients.filter((r) => (r.telegramEnabled && r.telegramChatId) || (r.emailEnabled && r.email));
+
+  let sent = 0;
+  let skipped = 0;
+  const text = ["Тестовое уведомление Salestraking", `Время: ${new Date().toISOString()}`].join("\n");
+
+  for (const recipient of activeRecipients) {
+    let delivered = false;
+    if (recipient.telegramEnabled && recipient.telegramChatId) {
+      const tg = await sendTelegramMessage(recipient.telegramChatId, text);
+      delivered = delivered || tg.ok;
+    }
+    if (recipient.emailEnabled && recipient.email) {
+      const mail = await sendEmailMessage(recipient.email, "Тестовое уведомление Salestraking", text);
+      delivered = delivered || mail.ok;
+    }
+
+    if (delivered) sent += 1;
+    else skipped += 1;
+  }
+
+  return { ok: true, sent, skipped, recipients: activeRecipients.length };
+}
+
 async function wasSent(kind: NotificationKind, windowKey: string, saleId: string, recipientId: string) {
   const existing = await prisma.notificationLog.findUnique({
     where: {
