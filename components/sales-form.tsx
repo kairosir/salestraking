@@ -26,7 +26,6 @@ type SaleRow = {
 
 const CNY_TO_KZT = 80;
 const MAX_IMAGE_BYTES = 1_100_000;
-const MAX_SOURCE_IMAGE_BYTES = 15_000_000;
 const SALE_DRAFT_KEY = "salestraking:new-sale-draft:v1";
 
 const inputClass =
@@ -128,31 +127,59 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 type CropPixels = { x: number; y: number; width: number; height: number };
 
-async function getCroppedDataUrl(imageSrc: string, cropPixels: CropPixels) {
-  const image = await loadImage(imageSrc);
+function shrinkCanvas(source: HTMLCanvasElement, scale: number) {
   const canvas = document.createElement("canvas");
-  const maxSide = 1400;
-  const scale = Math.min(1, maxSide / Math.max(cropPixels.width, cropPixels.height));
-  const width = Math.max(1, Math.round(cropPixels.width * scale));
-  const height = Math.max(1, Math.round(cropPixels.height * scale));
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = Math.max(1, Math.floor(source.width * scale));
+  canvas.height = Math.max(1, Math.floor(source.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Не удалось подготовить изображение");
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+function encodeCanvasToTargetSize(source: HTMLCanvasElement, maxBytes: number) {
+  let canvas = source;
+  let quality = 0.92;
+  for (let i = 0; i < 14; i += 1) {
+    const dataUrl = canvas.toDataURL("image/jpeg", quality);
+    const bytes = estimateDataUrlBytes(dataUrl);
+    if (bytes <= maxBytes) return dataUrl;
+
+    if (quality > 0.55) {
+      quality = Math.max(0.55, quality - 0.08);
+      continue;
+    }
+
+    canvas = shrinkCanvas(canvas, 0.85);
+    quality = 0.88;
+  }
+
+  return canvas.toDataURL("image/jpeg", 0.55);
+}
+
+async function getCroppedDataUrl(imageSrc: string, cropPixels: CropPixels, renderedImage: HTMLImageElement | null) {
+  const image = renderedImage ?? (await loadImage(imageSrc));
+  const renderWidth = renderedImage?.width || image.width;
+  const renderHeight = renderedImage?.height || image.height;
+  const naturalWidth = renderedImage?.naturalWidth || image.naturalWidth || image.width;
+  const naturalHeight = renderedImage?.naturalHeight || image.naturalHeight || image.height;
+  const scaleX = naturalWidth / Math.max(1, renderWidth);
+  const scaleY = naturalHeight / Math.max(1, renderHeight);
+
+  const srcX = Math.max(0, Math.round(cropPixels.x * scaleX));
+  const srcY = Math.max(0, Math.round(cropPixels.y * scaleY));
+  const srcW = Math.max(1, Math.round(cropPixels.width * scaleX));
+  const srcH = Math.max(1, Math.round(cropPixels.height * scaleY));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = srcW;
+  canvas.height = srcH;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Не удалось подготовить изображение");
 
-  ctx.drawImage(
-    image,
-    cropPixels.x,
-    cropPixels.y,
-    cropPixels.width,
-    cropPixels.height,
-    0,
-    0,
-    width,
-    height
-  );
+  ctx.drawImage(image, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
 
-  return canvas.toDataURL("image/jpeg", 0.9);
+  return encodeCanvasToTargetSize(canvas, MAX_IMAGE_BYTES);
 }
 
 export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean }) {
@@ -217,7 +244,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
         return;
       }
 
-      const nextImage = await getCroppedDataUrl(cropSource, effectiveCrop);
+      const nextImage = await getCroppedDataUrl(cropSource, effectiveCrop, cropImageRef.current);
       if (estimateDataUrlBytes(nextImage) > MAX_IMAGE_BYTES) {
         setError("Файл после обрезки всё ещё большой. Обрежьте сильнее.");
         return;
@@ -237,10 +264,6 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
       setError("Можно загружать только изображения");
-      return;
-    }
-    if (file.size > MAX_SOURCE_IMAGE_BYTES) {
-      setError("Скрин слишком большой. Максимум 15 МБ.");
       return;
     }
 

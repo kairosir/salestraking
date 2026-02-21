@@ -138,12 +138,12 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-card/70 p-4">
+    <div className="h-28 rounded-2xl border border-line bg-card/70 p-3.5">
       <p className="mb-2 inline-flex items-center gap-2 text-sm text-muted">
         <span>{icon}</span>
         {label}
       </p>
-      <p className={`text-2xl font-semibold ${accent ? "text-success" : "text-text"}`}>{value}</p>
+      <p className={`text-xl font-semibold ${accent ? "text-success" : "text-text"}`}>{value}</p>
     </div>
   );
 }

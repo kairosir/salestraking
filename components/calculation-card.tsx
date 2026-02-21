@@ -52,7 +52,7 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-2xl border border-line bg-card/70 p-4 text-left transition hover:border-accent"
+        className="h-28 w-full rounded-2xl border border-line bg-card/70 p-3.5 text-left transition hover:border-accent"
       >
         <p className="mb-2 inline-flex items-center gap-2 text-sm text-muted">
           <Calculator size={18} />
