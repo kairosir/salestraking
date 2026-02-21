@@ -332,12 +332,12 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                   </div>
                   <div className="my-2 h-px bg-line" />
                   <div className="flex items-center justify-between text-base text-text">
-                    <span className="font-semibold">Общая маржа</span>
-                    <span className="font-bold text-success">{money(marginTotal)}</span>
+                    <span className="font-semibold">Общая маржа (-5%)</span>
+                    <span className="font-bold text-success">{money(payoutTotal)}</span>
                   </div>
                   <div className="mt-1 flex items-center justify-between text-sm text-muted">
-                    <span>Доход на руки (-5%)</span>
-                    <span className="font-semibold text-accent">{money(payoutTotal)}</span>
+                    <span>Маржа до вычета</span>
+                    <span className="font-semibold text-accent">{money(marginTotal)}</span>
                   </div>
                 </div>
 

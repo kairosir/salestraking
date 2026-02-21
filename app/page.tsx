@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SalesForm } from "@/components/sales-form";
 import { SalesTable } from "@/components/sales-table";
+import { CalculationCard } from "@/components/calculation-card";
 import { logoutAction } from "@/app/actions";
 
 function money(value: number) {
@@ -49,6 +50,7 @@ export default async function Home() {
     },
     { revenue: 0, margin: 0 }
   );
+  const totalNetMargin = totals.margin * 0.95;
 
   const uiSales = sales.map((s) => ({
     id: s.id,
@@ -99,10 +101,11 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
             <StatCard icon={<DollarSign size={18} />} label="Выручка" value={money(totals.revenue)} />
-            <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totals.margin)} accent />
+            <StatCard icon={<TrendingUp size={18} />} label="Маржа (-5%)" value={money(totalNetMargin)} accent />
+            <CalculationCard totalNetMargin={totalNetMargin} />
           </div>
         </header>
 
