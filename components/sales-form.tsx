@@ -412,42 +412,6 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 </div>
 
                 <div>
-                  <Label text="Статус" />
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStatus("DONE");
-                        persistDraft({ status: "DONE" });
-                      }}
-                      className={`h-10 rounded-xl border text-sm transition ${status === "DONE" ? "border-emerald-400 bg-emerald-500/20 text-emerald-200" : "border-line bg-[#04111f] text-text hover:border-emerald-500/50"}`}
-                    >
-                      Выполнено
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStatus("TODO");
-                        persistDraft({ status: "TODO" });
-                      }}
-                      className={`h-10 rounded-xl border text-sm transition ${status === "TODO" ? "border-rose-400 bg-rose-500/20 text-rose-200" : "border-line bg-[#04111f] text-text hover:border-rose-500/50"}`}
-                    >
-                      Доделать
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStatus("WAITING");
-                        persistDraft({ status: "WAITING" });
-                      }}
-                      className={`h-10 rounded-xl border text-sm transition ${status === "WAITING" ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-line bg-[#04111f] text-text hover:border-amber-500/50"}`}
-                    >
-                      Ожидание
-                    </button>
-                  </div>
-                </div>
-
-                <div>
                   <Label text="Скрин товара (drag and drop)" />
                   <div
                     onDragOver={(e) => e.preventDefault()}
@@ -484,6 +448,42 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       <img src={screenshotData} alt="Скрин товара" className="max-h-40 w-full object-contain bg-[#020b14]" />
                     </div>
                   )}
+                </div>
+
+                <div>
+                  <Label text="Статус" />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStatus("DONE");
+                        persistDraft({ status: "DONE" });
+                      }}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "DONE" ? "border-emerald-400 bg-emerald-500/20 text-emerald-200" : "border-line bg-[#04111f] text-text hover:border-emerald-500/50"}`}
+                    >
+                      Выполнено
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStatus("TODO");
+                        persistDraft({ status: "TODO" });
+                      }}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "TODO" ? "border-rose-400 bg-rose-500/20 text-rose-200" : "border-line bg-[#04111f] text-text hover:border-rose-500/50"}`}
+                    >
+                      Доделать
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStatus("WAITING");
+                        persistDraft({ status: "WAITING" });
+                      }}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "WAITING" ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-line bg-[#04111f] text-text hover:border-amber-500/50"}`}
+                    >
+                      Ожидание
+                    </button>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-line bg-[#04111f] px-4 py-3">

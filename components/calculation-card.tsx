@@ -100,8 +100,8 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
 
             <div className="space-y-2">
               <Row label="Маржа за период" value={money(periodMargin)} />
+              <Row label="Aim (40%)" value={money(split.aim)} />
               <Row label="Dasha (60%)" value={money(split.dasha)} />
-              <Row label="aim (40%)" value={money(split.aim)} />
             </div>
           </div>
         </div>,
