@@ -34,12 +34,18 @@ export default async function Home() {
 
   const uiSales = sales.map((s) => ({
     id: s.id,
+    productId: s.productId,
     clientName: s.clientName,
     clientPhone: s.clientPhone,
     productName: s.productName,
     productLink: s.productLink,
+    paidTo: s.paidTo,
+    orderDate: s.orderDate ? s.orderDate.toISOString() : null,
+    paymentDate: s.paymentDate ? s.paymentDate.toISOString() : null,
+    screenshotData: s.screenshotData,
     size: s.size,
     quantity: s.quantity,
+    costPriceCny: s.costPriceCny.toString(),
     costPrice: s.costPrice.toString(),
     salePrice: s.salePrice.toString(),
     margin: s.margin.toString(),

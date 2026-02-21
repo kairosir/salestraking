@@ -6,6 +6,26 @@ import { auth, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saleSchema } from "@/lib/sale-schema";
 
+const CNY_TO_KZT = 80;
+
+function parseDate(value?: string) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeOptionalString(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeOptionalDateString(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
 export async function loginWithCredentials(formData: FormData) {
   const login = String(formData.get("login") ?? "");
   const password = String(formData.get("password") ?? "");
@@ -59,13 +79,18 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
 
     const parsed = saleSchema.safeParse({
+      productId: formData.get("productId"),
       clientName: formData.get("clientName"),
       clientPhone: formData.get("clientPhone"),
       productName: formData.get("productName"),
       productLink: formData.get("productLink"),
+      paidTo: formData.get("paidTo"),
+      orderDate: formData.get("orderDate"),
+      paymentDate: formData.get("paymentDate"),
+      screenshotData: formData.get("screenshotData"),
       size: formData.get("size"),
       quantity: formData.get("quantity"),
-      costPrice: formData.get("costPrice"),
+      costPriceCny: formData.get("costPriceCny"),
       salePrice: formData.get("salePrice")
     });
 
@@ -73,19 +98,45 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       return { ok: false, error: parsed.error.issues[0]?.message ?? "Ошибка валидации" };
     }
 
-    const data = parsed.data;
-    const margin = (data.salePrice - data.costPrice) * data.quantity;
+    const data = parsed.data as Record<string, unknown>;
+
+    const clientName = String(data.clientName ?? "").trim();
+    const clientPhone = String(data.clientPhone ?? "").trim();
+    const productName = String(data.productName ?? "").trim();
+    const productId = normalizeOptionalString(data.productId);
+    const productLink = normalizeOptionalString(data.productLink);
+    const paidTo = normalizeOptionalString(data.paidTo);
+    const size = normalizeOptionalString(data.size);
+    const orderDate = parseDate(normalizeOptionalDateString(data.orderDate));
+    const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
+    const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
+
+    if (screenshotDataRaw.length > 1_500_000) {
+      return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
+    }
+
+    const costPriceCny = Number(data.costPriceCny);
+    const salePrice = Number(data.salePrice);
+    const quantity = Number(data.quantity);
+    const costPrice = costPriceCny * CNY_TO_KZT;
+    const margin = (salePrice - costPrice) * quantity;
 
     await prisma.sale.create({
       data: {
-        clientName: data.clientName,
-        clientPhone: data.clientPhone,
-        productName: data.productName,
-        productLink: data.productLink || null,
-        size: data.size || null,
-        quantity: data.quantity,
-        costPrice: data.costPrice,
-        salePrice: data.salePrice,
+        productId,
+        clientName,
+        clientPhone,
+        productName,
+        productLink,
+        paidTo,
+        orderDate,
+        paymentDate,
+        screenshotData: screenshotDataRaw || null,
+        size,
+        quantity,
+        costPriceCny,
+        costPrice,
+        salePrice,
         margin,
         createdById: session.user.id,
         updatedById: session.user.id
@@ -110,13 +161,18 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     if (!id) return { ok: false, error: "Не найден id записи" };
 
     const parsed = saleSchema.safeParse({
+      productId: formData.get("productId"),
       clientName: formData.get("clientName"),
       clientPhone: formData.get("clientPhone"),
       productName: formData.get("productName"),
       productLink: formData.get("productLink"),
+      paidTo: formData.get("paidTo"),
+      orderDate: formData.get("orderDate"),
+      paymentDate: formData.get("paymentDate"),
+      screenshotData: formData.get("screenshotData"),
       size: formData.get("size"),
       quantity: formData.get("quantity"),
-      costPrice: formData.get("costPrice"),
+      costPriceCny: formData.get("costPriceCny"),
       salePrice: formData.get("salePrice")
     });
 
@@ -124,20 +180,46 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       return { ok: false, error: parsed.error.issues[0]?.message ?? "Ошибка валидации" };
     }
 
-    const data = parsed.data;
-    const margin = (data.salePrice - data.costPrice) * data.quantity;
+    const data = parsed.data as Record<string, unknown>;
+
+    const clientName = String(data.clientName ?? "").trim();
+    const clientPhone = String(data.clientPhone ?? "").trim();
+    const productName = String(data.productName ?? "").trim();
+    const productId = normalizeOptionalString(data.productId);
+    const productLink = normalizeOptionalString(data.productLink);
+    const paidTo = normalizeOptionalString(data.paidTo);
+    const size = normalizeOptionalString(data.size);
+    const orderDate = parseDate(normalizeOptionalDateString(data.orderDate));
+    const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
+    const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
+
+    if (screenshotDataRaw.length > 1_500_000) {
+      return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
+    }
+
+    const costPriceCny = Number(data.costPriceCny);
+    const salePrice = Number(data.salePrice);
+    const quantity = Number(data.quantity);
+    const costPrice = costPriceCny * CNY_TO_KZT;
+    const margin = (salePrice - costPrice) * quantity;
 
     await prisma.sale.update({
       where: { id },
       data: {
-        clientName: data.clientName,
-        clientPhone: data.clientPhone,
-        productName: data.productName,
-        productLink: data.productLink || null,
-        size: data.size || null,
-        quantity: data.quantity,
-        costPrice: data.costPrice,
-        salePrice: data.salePrice,
+        productId,
+        clientName,
+        clientPhone,
+        productName,
+        productLink,
+        paidTo,
+        orderDate,
+        paymentDate,
+        screenshotData: screenshotDataRaw || null,
+        size,
+        quantity,
+        costPriceCny,
+        costPrice,
+        salePrice,
         margin,
         updatedById: session.user.id
       }

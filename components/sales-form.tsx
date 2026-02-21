@@ -1,20 +1,27 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { Loader2, Pencil, Plus, X } from "lucide-react";
+import { useMemo, useRef, useState, useTransition } from "react";
+import { FileImage, Loader2, Pencil, Plus, Upload, X } from "lucide-react";
 import { createSaleAction, updateSaleAction } from "@/app/actions";
 
 type SaleRow = {
   id: string;
+  productId: string | null;
   clientName: string;
   clientPhone: string;
   productName: string;
   productLink: string | null;
+  paidTo: string | null;
+  orderDate: string | null;
+  paymentDate: string | null;
+  screenshotData: string | null;
   size: string | null;
   quantity: number;
-  costPrice: string;
+  costPriceCny: string;
   salePrice: string;
 };
+
+const CNY_TO_KZT = 80;
 
 const inputClass =
   "h-11 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
@@ -57,19 +64,56 @@ function formatPhone(value: string) {
   return out;
 }
 
+function parseFlexibleNumber(value: string) {
+  const normalized = value.replace(/\s+/g, "").replace(",", ".");
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function toDateInputValue(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
 export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "+7");
   const [quantity, setQuantity] = useState<number>(sale?.quantity ?? 1);
-  const [costPrice, setCostPrice] = useState<number>(Number(sale?.costPrice ?? 0));
+  const [costPriceCnyInput, setCostPriceCnyInput] = useState<string>(sale?.costPriceCny ?? "0");
   const [salePrice, setSalePrice] = useState<number>(Number(sale?.salePrice ?? 0));
+  const [screenshotData, setScreenshotData] = useState<string>(sale?.screenshotData ?? "");
 
-  const marginPerUnit = useMemo(() => salePrice - costPrice, [salePrice, costPrice]);
+  const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
+  const costPriceKzt = useMemo(() => costPriceCny * CNY_TO_KZT, [costPriceCny]);
+  const marginPerUnit = useMemo(() => salePrice - costPriceKzt, [salePrice, costPriceKzt]);
   const marginTotal = useMemo(() => marginPerUnit * quantity, [marginPerUnit, quantity]);
   const payoutTotal = useMemo(() => marginTotal * 0.95, [marginTotal]);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Можно загружать только изображения");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      if (!result) return;
+      if (result.length > 1_500_000) {
+        setError("Файл слишком большой. Выберите изображение поменьше.");
+        return;
+      }
+      setScreenshotData(result);
+      setError(null);
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <>
@@ -88,12 +132,12 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
 
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl">
+          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl">
             <div className="p-4 sm:p-6">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold text-text">{sale ? "Редактирование" : "Новая продажа"}</h2>
-                  <p className="mt-1 text-sm text-muted">Заполните данные о продаже</p>
+                  <h2 className="text-2xl font-semibold text-text">{sale ? "Редактирование" : "Новый товар"}</h2>
+                  <p className="mt-1 text-sm text-muted">Заполните полную информацию по заказу</p>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
@@ -130,6 +174,30 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 }}
                 className="space-y-4"
               >
+                <input type="hidden" name="screenshotData" value={screenshotData} />
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label text="ID товара" />
+                    <input className={inputClass} placeholder="SKU / ID" name="productId" defaultValue={sale?.productId ?? ""} />
+                  </div>
+                  <div>
+                    <Label text="Дата заказа" />
+                    <input className={inputClass} type="date" name="orderDate" defaultValue={toDateInputValue(sale?.orderDate)} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label text="Дата оплаты" />
+                    <input className={inputClass} type="date" name="paymentDate" defaultValue={toDateInputValue(sale?.paymentDate)} />
+                  </div>
+                  <div>
+                    <Label text="Куда оплатили" />
+                    <input className={inputClass} placeholder="Kaspi / карта / supplier" name="paidTo" defaultValue={sale?.paidTo ?? ""} />
+                  </div>
+                </div>
+
                 <div>
                   <Label text="Имя клиента" required />
                   <input className={inputClass} placeholder="Иван Иванов" name="clientName" defaultValue={sale?.clientName ?? ""} required />
@@ -179,18 +247,17 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label text="Цена товара" required />
+                    <Label text="Цена товара (в юанях)" required />
                     <input
                       className={inputClass}
-                      placeholder="0"
-                      name="costPrice"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      defaultValue={sale?.costPrice ?? "0"}
-                      onChange={(e) => setCostPrice(Number(e.target.value || 0))}
+                      placeholder="Например: 19.5 или 19,5"
+                      name="costPriceCny"
+                      inputMode="decimal"
+                      defaultValue={sale?.costPriceCny ?? "0"}
+                      onChange={(e) => setCostPriceCnyInput(e.target.value)}
                       required
                     />
+                    <p className="mt-1 text-xs text-muted">Конвертация: 1 ¥ = 80 ₸. В тенге: {money(costPriceKzt)}</p>
                   </div>
                   <div>
                     <Label text="Цена продажи" required />
@@ -205,10 +272,55 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       onChange={(e) => setSalePrice(Number(e.target.value || 0))}
                       required
                     />
+                    <p className="mt-1 text-xs text-muted">Это цена, которую платит клиент</p>
                   </div>
                 </div>
 
+                <div>
+                  <Label text="Скрин товара (drag and drop)" />
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleFile(file);
+                    }}
+                    className="rounded-2xl border border-dashed border-line bg-[#04111f] p-4 text-center"
+                  >
+                    <FileImage className="mx-auto mb-2 text-muted" size={20} />
+                    <p className="text-sm text-muted">Перетащите скрин сюда или загрузите кнопкой</p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-3 inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
+                    >
+                      <Upload size={14} />
+                      Выбрать файл
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFile(file);
+                      }}
+                    />
+                  </div>
+                  {screenshotData && (
+                    <div className="mt-2 overflow-hidden rounded-xl border border-line">
+                      <img src={screenshotData} alt="Скрин товара" className="max-h-40 w-full object-contain bg-[#020b14]" />
+                    </div>
+                  )}
+                </div>
+
                 <div className="rounded-2xl border border-line bg-[#04111f] px-4 py-3">
+                  <div className="flex items-center justify-between text-sm text-muted">
+                    <span>Цена товара в тенге</span>
+                    <span className="font-semibold text-text">{money(costPriceKzt)}</span>
+                  </div>
+                  <div className="my-2 h-px bg-line" />
                   <div className="flex items-center justify-between text-sm text-muted">
                     <span>Маржа за единицу</span>
                     <span className="font-semibold text-success">{money(marginPerUnit)}</span>

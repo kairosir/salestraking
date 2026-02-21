@@ -1,18 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LayoutGrid, List, MessageCircle, Search, Trash2 } from "lucide-react";
+import { Eye, LayoutGrid, List, MessageCircle, Search, Trash2, X } from "lucide-react";
 import { deleteSaleAction } from "@/app/actions";
 import { SalesForm } from "@/components/sales-form";
 
 type Sale = {
   id: string;
+  productId: string | null;
   clientName: string;
   clientPhone: string;
   productName: string;
   productLink: string | null;
+  paidTo: string | null;
+  orderDate: string | null;
+  paymentDate: string | null;
+  screenshotData: string | null;
   size: string | null;
   quantity: number;
+  costPriceCny: string;
   costPrice: string;
   salePrice: string;
   margin: string;
@@ -32,6 +38,11 @@ function dateFmt(value: string) {
   return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
+function onlyDate(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value));
+}
+
 function waLink(phone: string) {
   const digits = phone.replace(/\D/g, "");
   if (digits.length < 10) return null;
@@ -44,6 +55,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [author, setAuthor] = useState("all");
   const [sort, setSort] = useState<SortMode>("newest");
   const [mobileView, setMobileView] = useState<MobileView>("cards");
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
   const authors = useMemo(() => {
     const unique = Array.from(new Set(sales.map((s) => s.createdByName))).sort((a, b) => a.localeCompare(b, "ru"));
@@ -55,7 +67,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
     const byQuery = sales.filter((item) => {
       if (!q) return true;
-      return [item.clientName, item.clientPhone, item.productName, item.size ?? "", item.createdByName, item.updatedByName]
+      return [item.clientName, item.clientPhone, item.productName, item.productId ?? "", item.size ?? "", item.createdByName, item.updatedByName]
         .join(" ")
         .toLowerCase()
         .includes(q);
@@ -91,7 +103,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по клиенту, товару, автору..."
+            placeholder="Поиск по клиенту, товару, ID, автору..."
             className="h-11 w-full rounded-2xl border border-line bg-[#031325] pl-9 pr-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent"
           />
         </div>
@@ -145,8 +157,8 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
       <div className="hidden rounded-3xl border border-line bg-card/70 lg:block">
         <div className="overflow-x-auto">
-          <div className="min-w-[1200px]">
-            <div className="grid grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.8fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
+          <div className="min-w-[1280px]">
+            <div className="grid grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
               <span>Клиент</span>
               <span>Телефон</span>
               <span>Товар</span>
@@ -166,7 +178,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 const revenue = Number(sale.salePrice) * sale.quantity;
 
                 return (
-                  <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.8fr]">
+                  <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr]">
                     <p className="truncate text-sm font-medium text-text">{sale.clientName}</p>
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-xs text-text">{sale.clientPhone}</p>
@@ -184,11 +196,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     </div>
                     <div>
                       <p className="truncate text-xs text-text">{sale.productName}</p>
-                      {sale.productLink && (
-                        <a href={sale.productLink} target="_blank" className="text-[11px] text-accent underline-offset-2 hover:underline" rel="noreferrer">
-                          Ссылка
-                        </a>
-                      )}
+                      {sale.productId && <p className="text-[11px] text-muted">ID: {sale.productId}</p>}
                     </div>
                     <p className="text-xs text-text">{sale.size || "-"}</p>
                     <p className="text-xs text-text">{sale.quantity}</p>
@@ -203,17 +211,31 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     </p>
 
                     <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSale(sale)}
+                        className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs text-text transition hover:border-accent"
+                      >
+                        <Eye size={14} />
+                        Открыть
+                      </button>
+
                       <SalesForm
                         compact
                         sale={{
                           id: sale.id,
+                          productId: sale.productId,
                           clientName: sale.clientName,
                           clientPhone: sale.clientPhone,
                           productName: sale.productName,
                           productLink: sale.productLink,
+                          paidTo: sale.paidTo,
+                          orderDate: sale.orderDate,
+                          paymentDate: sale.paymentDate,
+                          screenshotData: sale.screenshotData,
                           size: sale.size,
                           quantity: sale.quantity,
-                          costPrice: sale.costPrice,
+                          costPriceCny: sale.costPriceCny,
                           salePrice: sale.salePrice
                         }}
                       />
@@ -265,6 +287,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               </div>
 
               <p className="text-sm text-text">{sale.productName}</p>
+              {sale.productId && <p className="text-xs text-muted">ID: {sale.productId}</p>}
               <p className="mt-1 text-xs text-muted">
                 Размер: {sale.size || "-"} · Кол-во: {sale.quantity}
               </p>
@@ -279,21 +302,31 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 </div>
               </div>
 
-              <p className="mt-2 text-xs text-muted">
-                Добавил: {sale.createdByName} · Изм.: {sale.updatedByName}
-              </p>
-
               <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSale(sale)}
+                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs text-text"
+                >
+                  <Eye size={14} />
+                  Открыть
+                </button>
+
                 <SalesForm
                   sale={{
                     id: sale.id,
+                    productId: sale.productId,
                     clientName: sale.clientName,
                     clientPhone: sale.clientPhone,
                     productName: sale.productName,
                     productLink: sale.productLink,
+                    paidTo: sale.paidTo,
+                    orderDate: sale.orderDate,
+                    paymentDate: sale.paymentDate,
+                    screenshotData: sale.screenshotData,
                     size: sale.size,
                     quantity: sale.quantity,
-                    costPrice: sale.costPrice,
+                    costPriceCny: sale.costPriceCny,
                     salePrice: sale.salePrice
                   }}
                   compact
@@ -329,6 +362,62 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           );
         })}
       </div>
+
+      {selectedSale && (
+        <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
+          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-text">Карточка товара</h3>
+                <p className="text-sm text-muted">Полная информация</p>
+              </div>
+              <button type="button" onClick={() => setSelectedSale(null)} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Info label="ID товара" value={selectedSale.productId || "-"} />
+              <Info label="Товар" value={selectedSale.productName} />
+              <Info label="Клиент" value={selectedSale.clientName} />
+              <Info label="Телефон" value={selectedSale.clientPhone} />
+              <Info label="Дата заказа" value={onlyDate(selectedSale.orderDate)} />
+              <Info label="Дата оплаты" value={onlyDate(selectedSale.paymentDate)} />
+              <Info label="Куда оплатили" value={selectedSale.paidTo || "-"} />
+              <Info label="Размер" value={selectedSale.size || "-"} />
+              <Info label="Количество" value={String(selectedSale.quantity)} />
+              <Info label="Цена товара (¥)" value={selectedSale.costPriceCny} />
+              <Info label="Цена товара (₸)" value={money(selectedSale.costPrice)} />
+              <Info label="Цена продажи (₸)" value={money(selectedSale.salePrice)} />
+              <Info label="Маржа (₸)" value={money(selectedSale.margin)} />
+              <Info label="Выручка (₸)" value={money(Number(selectedSale.salePrice) * selectedSale.quantity)} />
+              <Info label="Создал" value={selectedSale.createdByName} />
+              <Info label="Изменил" value={selectedSale.updatedByName} />
+            </div>
+
+            {selectedSale.productLink && (
+              <a href={selectedSale.productLink} target="_blank" rel="noreferrer" className="mt-4 inline-block rounded-xl border border-line px-4 py-2 text-sm text-accent transition hover:border-accent">
+                Открыть ссылку товара
+              </a>
+            )}
+
+            {selectedSale.screenshotData && (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-line">
+                <img src={selectedSale.screenshotData} alt="Скрин товара" className="max-h-[320px] w-full object-contain bg-[#04111f]" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-[#04111f] p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-sm text-text">{value}</p>
     </div>
   );
 }
