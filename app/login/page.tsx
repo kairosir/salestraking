@@ -13,13 +13,14 @@ const authErrors: Record<string, string> = {
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/");
 
   const params = await searchParams;
   const errorMessage = params.error ? authErrors[params.error] ?? "Ошибка входа. Попробуйте еще раз." : null;
+  const callbackUrl = params.callbackUrl && params.callbackUrl.startsWith("/") ? params.callbackUrl : "/";
 
   return (
     <main className="min-h-screen bg-mesh px-4 py-10">
@@ -30,6 +31,8 @@ export default async function LoginPage({
         {errorMessage && <div className="mb-4 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">{errorMessage}</div>}
 
         <form action={loginWithCredentials} className="space-y-3">
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
+
           <label className="block space-y-1">
             <span className="text-xs text-muted">Логин или email</span>
             <div className="relative">
@@ -67,7 +70,7 @@ export default async function LoginPage({
             <form
               action={async () => {
                 "use server";
-                await loginWithProvider("google");
+                await loginWithProvider("google", callbackUrl);
               }}
             >
               <button type="submit" className="h-11 w-full rounded-xl border border-line bg-card text-sm transition hover:border-accent">
@@ -80,7 +83,7 @@ export default async function LoginPage({
             <form
               action={async () => {
                 "use server";
-                await loginWithProvider("apple");
+                await loginWithProvider("apple", callbackUrl);
               }}
             >
               <button type="submit" className="h-11 w-full rounded-xl border border-line bg-card text-sm transition hover:border-accent">

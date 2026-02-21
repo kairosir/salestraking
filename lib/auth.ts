@@ -69,13 +69,17 @@ if (authProviderFlags.apple) {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers,
   callbacks: {
-    session: async ({ session, user }) => {
+    jwt: async ({ token, user }) => {
+      if (user) token.id = user.id;
+      return token;
+    },
+    session: async ({ session, token, user }) => {
       if (session.user) {
-        session.user.id = user.id;
+        session.user.id = String(token.id ?? token.sub ?? user?.id ?? "");
       }
       return session;
     }

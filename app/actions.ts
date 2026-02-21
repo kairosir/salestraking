@@ -8,15 +8,16 @@ import { saleSchema } from "@/lib/sale-schema";
 export async function loginWithCredentials(formData: FormData) {
   const login = String(formData.get("login") ?? "");
   const password = String(formData.get("password") ?? "");
+  const callbackUrl = String(formData.get("callbackUrl") ?? "/");
 
   await signIn("credentials", {
     login,
     password,
-    redirectTo: "/"
+    redirectTo: callbackUrl.startsWith("/") ? callbackUrl : "/"
   });
 }
 
-export async function loginWithProvider(provider: "google" | "apple") {
+export async function loginWithProvider(provider: "google" | "apple", callbackUrl = "/") {
   if (provider === "google" && !authProviderFlags.google) {
     throw new Error("Google OAuth не настроен. Добавьте GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET.");
   }
@@ -25,7 +26,7 @@ export async function loginWithProvider(provider: "google" | "apple") {
     throw new Error("Apple OAuth не настроен. Добавьте APPLE_ID и APPLE_SECRET.");
   }
 
-  await signIn(provider, { redirectTo: "/" });
+  await signIn(provider, { redirectTo: callbackUrl.startsWith("/") ? callbackUrl : "/" });
 }
 
 export async function logoutAction() {
