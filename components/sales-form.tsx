@@ -69,6 +69,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
 
   const marginPerUnit = useMemo(() => salePrice - costPrice, [salePrice, costPrice]);
   const marginTotal = useMemo(() => marginPerUnit * quantity, [marginPerUnit, quantity]);
+  const payoutTotal = useMemo(() => marginTotal * 0.95, [marginTotal]);
 
   return (
     <>
@@ -216,6 +217,10 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                   <div className="flex items-center justify-between text-base text-text">
                     <span className="font-semibold">Общая маржа</span>
                     <span className="font-bold text-success">{money(marginTotal)}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-sm text-muted">
+                    <span>Доход на руки (-5%)</span>
+                    <span className="font-semibold text-accent">{money(payoutTotal)}</span>
                   </div>
                 </div>
 
