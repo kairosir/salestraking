@@ -29,7 +29,7 @@ function Label({ text, required }: { text: string; required?: boolean }) {
 }
 
 function money(value: number) {
-  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "KZT", maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " ₸";
 }
 
 function normalizePhoneDigits(value: string) {
