@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authProviderFlags } from "@/lib/auth";
 
 export async function GET() {
   let db: "ok" | "error" = "ok";
@@ -15,9 +14,7 @@ export async function GET() {
     status: db === "ok" ? "ok" : "partial",
     db,
     auth: {
-      credentials: true,
-      google: authProviderFlags.google,
-      apple: authProviderFlags.apple
+      credentials: true
     }
   });
 }

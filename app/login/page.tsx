@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
-import { auth, authProviderFlags } from "@/lib/auth";
-import { loginWithCredentials, loginWithProvider } from "@/app/actions";
+import { auth } from "@/lib/auth";
+import { loginWithCredentials } from "@/app/actions";
 
 const authErrors: Record<string, string> = {
-  OAuthAccountNotLinked: "Этот email уже зарегистрирован другим методом входа.",
-  AccessDenied: "Доступ запрещен настройками провайдера.",
   Configuration: "Ошибка конфигурации входа. Проверьте переменные окружения.",
   CredentialsSignin: "Неверный логин или пароль."
 };
@@ -59,45 +57,9 @@ export default async function LoginPage({
           </label>
 
           <button type="submit" className="h-11 w-full rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110">
-            Войти
+            Войти в таблицу
           </button>
         </form>
-
-        {(authProviderFlags.google || authProviderFlags.apple) && <div className="my-4 h-px bg-line" />}
-
-        <div className="space-y-2">
-          {authProviderFlags.google && (
-            <form
-              action={async () => {
-                "use server";
-                await loginWithProvider("google", callbackUrl);
-              }}
-            >
-              <button type="submit" className="h-11 w-full rounded-xl border border-line bg-card text-sm transition hover:border-accent">
-                Войти через Google
-              </button>
-            </form>
-          )}
-
-          {authProviderFlags.apple && (
-            <form
-              action={async () => {
-                "use server";
-                await loginWithProvider("apple", callbackUrl);
-              }}
-            >
-              <button type="submit" className="h-11 w-full rounded-xl border border-line bg-card text-sm transition hover:border-accent">
-                Войти через Apple
-              </button>
-            </form>
-          )}
-        </div>
-
-        <p className="mt-6 text-xs text-muted">
-          {authProviderFlags.google || authProviderFlags.apple
-            ? "После первого входа через OAuth аккаунт создается автоматически."
-            : "OAuth пока выключен: добавьте Google/Apple ключи в .env и Vercel Environment Variables."}
-        </p>
       </div>
     </main>
   );

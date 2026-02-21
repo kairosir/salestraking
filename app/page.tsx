@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChartNoAxesCombined, DollarSign, TrendingUp, User } from "lucide-react";
 import { auth } from "@/lib/auth";
@@ -62,6 +63,9 @@ export default async function Home() {
                 <User size={15} className="text-muted" />
                 <span>{session.user.name || session.user.email}</span>
               </div>
+              <Link href="/account" className="rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text">
+                Кабинет
+              </Link>
               <form action={logoutAction}>
                 <button className="rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text">
                   Выйти

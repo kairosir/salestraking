@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth, authProviderFlags, signIn, signOut } from "@/lib/auth";
+import { compare, hash } from "bcryptjs";
+import { auth, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saleSchema } from "@/lib/sale-schema";
 
@@ -17,20 +18,39 @@ export async function loginWithCredentials(formData: FormData) {
   });
 }
 
-export async function loginWithProvider(provider: "google" | "apple", callbackUrl = "/") {
-  if (provider === "google" && !authProviderFlags.google) {
-    throw new Error("Google OAuth не настроен. Добавьте GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET.");
-  }
-
-  if (provider === "apple" && !authProviderFlags.apple) {
-    throw new Error("Apple OAuth не настроен. Добавьте APPLE_ID и APPLE_SECRET.");
-  }
-
-  await signIn(provider, { redirectTo: callbackUrl.startsWith("/") ? callbackUrl : "/" });
-}
-
 export async function logoutAction() {
   await signOut({ redirectTo: "/login" });
+}
+
+export async function changePasswordAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (newPassword.length < 8) throw new Error("Новый пароль должен быть минимум 8 символов");
+  if (newPassword !== confirmPassword) throw new Error("Подтверждение пароля не совпадает");
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { passwordHash: true }
+  });
+
+  if (!user?.passwordHash) throw new Error("У пользователя не настроен пароль");
+
+  const currentValid = await compare(currentPassword, user.passwordHash);
+  if (!currentValid) throw new Error("Текущий пароль неверный");
+
+  const newHash = await hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { passwordHash: newHash }
+  });
+
+  revalidatePath("/account");
 }
 
 export async function createSaleAction(formData: FormData) {

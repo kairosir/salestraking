@@ -1,14 +1,12 @@
 # SalesTracker
 
-Современный сервис учета продаж с Neon PostgreSQL и авторизацией.
+Сервис учета продаж с Neon PostgreSQL и обязательной авторизацией.
 
 ## Что реализовано
 
-- Личный кабинет:
-  - логин/пароль (Credentials)
-  - Google OAuth (если ключи заданы)
-  - Apple OAuth (если ключи заданы)
-- Таблица продаж с мобильным UX:
+- Вход только по логину/паролю (Google/Apple отключены)
+- После успешного входа пользователь попадает на таблицу продаж
+- Таблица продаж и мобильный UX:
   - поиск
   - фильтр по автору
   - сортировка (новые/старые/маржа/выручка)
@@ -26,10 +24,15 @@
 - Аудит:
   - кто добавил
   - кто изменил
+- Личный кабинет `/account`:
+  - мой заработок (сумма маржи)
+  - моя выручка
+  - последние мои записи
+  - смена пароля
 
 ## Стек
 
-- Next.js 15 (App Router, Server Actions)
+- Next.js 15
 - NextAuth v5
 - Prisma
 - Neon PostgreSQL
@@ -51,11 +54,10 @@ cp .env.example .env
 
 3. Заполнить `.env`:
 
-- `DATABASE_URL` из Neon
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL` (`http://localhost:3000` локально)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (опционально)
-- `APPLE_ID` / `APPLE_SECRET` (опционально)
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `NEXTAUTH_SECRET` (рекомендуется тем же значением, что и `AUTH_SECRET`)
+- `NEXTAUTH_URL`
 
 4. Инициализировать БД:
 
@@ -71,50 +73,17 @@ npm run db:seed
 npm run dev
 ```
 
-## Проверка подключения Neon/Auth
+## Тестовые доступы после seed
 
-После запуска открой:
+- `admin / admin12345`
+- `test / test1234`
 
-- `/api/health`
+## Проверка состояния
 
-Ожидаемо:
+Открой `/api/health`:
 
-- `db: "ok"` — Neon подключен
-- `auth.google/auth.apple` — видно, какие OAuth-провайдеры реально активны
-
-## Подключение .env в Vercel
-
-### Вариант A: через Vercel Dashboard
-
-В проекте Vercel `Settings -> Environment Variables` добавь:
-
-- `DATABASE_URL`
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL` (например, `https://salestraking.vercel.app`)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (если нужен Google login)
-- `APPLE_ID` / `APPLE_SECRET` (если нужен Apple login)
-
-### Вариант B: синхронизация из локального `.env`
-
-Требуется установленный Vercel CLI и `VERCEL_TOKEN`.
-
-```bash
-export VERCEL_TOKEN="your_token"
-npm run vercel:env:sync
-```
-
-Для preview-среды:
-
-```bash
-npm run vercel:env:sync:preview
-```
-
-## OAuth callback URLs
-
-Для продакшена в Google/Apple укажи callback:
-
-- `https://<your-domain>/api/auth/callback/google`
-- `https://<your-domain>/api/auth/callback/apple`
+- `db: "ok"` — БД подключена
+- `auth.credentials: true` — credentials auth активен
 
 ## Автопуш и автодеплой
 
