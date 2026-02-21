@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Calculator, X } from "lucide-react";
 
 function money(value: number) {
@@ -11,8 +12,13 @@ type CalcSale = { createdAt: string; margin: number };
 
 export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: number; sales: CalcSale[] }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const periodMargin = useMemo(() => {
     const fromMs = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY;
@@ -49,9 +55,12 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
         <p className="text-xl font-semibold text-text">{money(totalNetMargin)}</p>
       </button>
 
-      {open && (
+      {mounted &&
+        open &&
+        createPortal(
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] p-4 sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
+          <div className="absolute inset-0" onClick={() => setOpen(false)} />
+          <div className="relative z-10 h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] p-4 sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl font-semibold text-text">Расчет общей маржи</h3>
@@ -89,7 +98,8 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
               <Row label="aim (40%)" value={money(split.aim)} />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
