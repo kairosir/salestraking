@@ -17,7 +17,8 @@ const config: Config = {
         glow: "0 0 0 1px rgb(var(--accent) / 0.35), 0 12px 34px rgb(var(--line) / 0.28)"
       },
       backgroundImage: {
-        mesh: "radial-gradient(circle at 12% 12%, rgb(var(--mesh-a) / 0.75), transparent 42%), radial-gradient(circle at 85% 2%, rgb(var(--mesh-b) / 0.34), transparent 42%)"
+        mesh: "radial-gradient(circle at 12% 12%, rgb(var(--mesh-a) / 0.75), transparent 42%), radial-gradient(circle at 85% 2%, rgb(var(--mesh-b) / 0.18), transparent 42%), linear-gradient(120deg, rgb(var(--bg) / 1), rgb(var(--card) / 0.86), rgb(var(--bg) / 1))",
+        panel: "linear-gradient(145deg, rgb(var(--card) / 0.9), rgb(var(--bg) / 0.88) 52%, rgb(var(--line) / 0.26))"
       }
     }
   },

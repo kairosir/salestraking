@@ -87,7 +87,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-bg bg-mesh">
       <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-5 sm:py-5">
-        <header className="rounded-3xl border border-line bg-card/75 p-3 backdrop-blur sm:p-4">
+        <header className="rounded-3xl border border-line bg-card/75 bg-panel p-3 backdrop-blur sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
               <div className="overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-glow">
@@ -146,7 +146,7 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="flex h-24 flex-col justify-between rounded-2xl border border-line bg-card/70 p-3 sm:h-28 sm:p-3.5">
+    <div className="flex h-24 flex-col justify-between rounded-2xl border border-line bg-card/70 bg-panel p-3 sm:h-28 sm:p-3.5">
       <p className="inline-flex items-center gap-2 text-xs text-muted sm:text-sm">
         <span>{icon}</span>
         {label}

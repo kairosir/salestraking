@@ -23,7 +23,7 @@ export default async function LoginPage({
 
   return (
     <main className="min-h-screen bg-mesh px-4 py-10">
-      <div className="mx-auto max-w-md rounded-3xl border border-line bg-card/80 p-6 shadow-2xl backdrop-blur">
+      <div className="mx-auto max-w-md rounded-3xl border border-line bg-card/80 bg-panel p-6 shadow-2xl backdrop-blur">
         <div className="mb-2 flex items-center justify-between gap-3">
           <p className="text-sm text-muted">Aimuselim Online Store</p>
           <ThemeToggle />

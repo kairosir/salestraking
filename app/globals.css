@@ -4,15 +4,15 @@
 
 :root {
   color-scheme: light;
-  --bg: 248 239 228;
-  --card: 236 221 201;
-  --line: 196 160 113;
-  --text: 44 34 23;
-  --muted: 111 85 58;
-  --accent: 185 142 88;
-  --success: 41 128 79;
-  --mesh-a: 244 230 210;
-  --mesh-b: 205 167 121;
+  --bg: 229 224 216; /* #E5E0D8 */
+  --card: 205 195 189; /* #CDC3BD */
+  --line: 178 153 138; /* #B2998A */
+  --text: 41 34 29;
+  --muted: 105 82 66; /* #695242 */
+  --accent: 35 45 75; /* dark blue from palette */
+  --success: 42 133 88;
+  --mesh-a: 229 224 216;
+  --mesh-b: 35 45 75;
 }
 
 html.theme-dark {
@@ -62,6 +62,23 @@ select {
     opacity: 0.3;
     filter: saturate(1.5);
   }
+}
+
+@keyframes mesh-flow {
+  0% {
+    background-position: 0% 0%, 100% 0%, 0% 50%;
+  }
+  50% {
+    background-position: 20% 15%, 85% 10%, 100% 50%;
+  }
+  100% {
+    background-position: 0% 0%, 100% 0%, 0% 50%;
+  }
+}
+
+.bg-mesh {
+  background-size: 160% 160%, 160% 160%, 120% 120%;
+  animation: mesh-flow 28s ease-in-out infinite;
 }
 
 .status-blink {

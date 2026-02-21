@@ -210,7 +210,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-line bg-card/60 p-3 sm:p-4">
+      <div className="rounded-2xl border border-line bg-card/60 bg-panel p-3 sm:p-4">
         <div className="relative mb-3">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
@@ -268,7 +268,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         </div>
       </div>
 
-      <div className="hidden rounded-3xl border border-line bg-card/70 lg:block">
+      <div className="hidden rounded-3xl border border-line bg-card/70 bg-panel lg:block">
         <div className="overflow-x-auto">
           <div className="min-w-[1220px]">
             <div className="grid grid-cols-[0.2fr_1fr_0.95fr_1.25fr_0.6fr_0.5fr_0.75fr_0.75fr_0.75fr_0.75fr_1fr_0.95fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
@@ -390,7 +390,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           const clientColor = colorFromKey(clientGroupKey(sale));
 
           return (
-            <article key={sale.id} className="rounded-2xl border border-line bg-card/70 p-3">
+            <article key={sale.id} className="rounded-2xl border border-line bg-card/70 bg-panel p-3">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
                   <div className="mb-1 flex items-center gap-2">
@@ -484,7 +484,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           const clientColor = colorFromKey(clientGroupKey(sale));
 
           return (
-            <div key={sale.id} className="rounded-xl border border-line bg-card/70 p-3">
+            <div key={sale.id} className="rounded-xl border border-line bg-card/70 bg-panel p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <div className="mb-1 flex items-center gap-2">

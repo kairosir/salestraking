@@ -75,7 +75,7 @@ export default async function AccountPage() {
   return (
     <main className="min-h-screen bg-bg bg-mesh">
       <div className="mx-auto max-w-5xl space-y-4 px-4 py-6 sm:px-6">
-        <header className="rounded-3xl border border-line bg-card/75 p-4 backdrop-blur">
+        <header className="rounded-3xl border border-line bg-card/75 bg-panel p-4 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted">Личный кабинет</p>
@@ -98,7 +98,7 @@ export default async function AccountPage() {
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="rounded-3xl border border-line bg-card/70 p-4">
+          <div className="rounded-3xl border border-line bg-card/70 bg-panel p-4">
             <p className="mb-3 inline-flex items-center gap-2 text-sm text-muted">
               <KeyRound size={16} />
               Смена пароля
@@ -106,7 +106,7 @@ export default async function AccountPage() {
             <ChangePasswordForm />
           </div>
 
-          <div className="rounded-3xl border border-line bg-card/70 p-4">
+          <div className="rounded-3xl border border-line bg-card/70 bg-panel p-4">
             <p className="mb-3 text-sm text-muted">Последние добавленные вами записи</p>
             <div className="space-y-2">
               {mySales.length === 0 && <p className="text-sm text-muted">У вас пока нет добавленных продаж.</p>}
