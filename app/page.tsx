@@ -86,16 +86,16 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-bg bg-mesh">
-      <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-3 py-5 sm:px-5">
-        <header className="rounded-3xl border border-line bg-card/75 p-4 backdrop-blur">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-5 sm:py-5">
+        <header className="rounded-3xl border border-line bg-card/75 p-3 backdrop-blur sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
               <div className="overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-glow">
                 <Image src="/icon-store.png" alt="Store icon" width={56} height={56} className="h-12 w-12 object-cover sm:h-14 sm:w-14" />
               </div>
               <div>
                 <p className="text-sm text-muted">Aimuselim Online Store</p>
-                <h1 className="text-2xl font-semibold">Отслеживание продаж</h1>
+                <h1 className="text-xl font-semibold sm:text-2xl">Отслеживание продаж</h1>
               </div>
             </div>
 
@@ -116,7 +116,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:mt-4 sm:gap-3 md:grid-cols-4">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
             <StatCard icon={<DollarSign size={18} />} label="Выручка" value={money(totals.revenue)} />
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
@@ -146,12 +146,12 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="h-28 rounded-2xl border border-line bg-card/70 p-3.5">
-      <p className="mb-2 inline-flex items-center gap-2 text-sm text-muted">
+    <div className="h-24 rounded-2xl border border-line bg-card/70 p-3 sm:h-28 sm:p-3.5">
+      <p className="mb-1.5 inline-flex items-center gap-2 text-xs text-muted sm:mb-2 sm:text-sm">
         <span>{icon}</span>
         {label}
       </p>
-      <p className={`text-xl font-semibold ${accent ? "text-success" : "text-text"}`}>{value}</p>
+      <p className={`text-lg font-semibold sm:text-xl ${accent ? "text-success" : "text-text"}`}>{value}</p>
     </div>
   );
 }
