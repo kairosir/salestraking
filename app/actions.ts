@@ -119,7 +119,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
     const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
 
-    if (screenshotDataRaw.length > 1_500_000) {
+    if (screenshotDataRaw !== "__KEEP__" && screenshotDataRaw.length > 1_500_000) {
       return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
     }
 
@@ -139,7 +139,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         paidTo,
         orderDate,
         paymentDate,
-        screenshotData: screenshotDataRaw || null,
+        screenshotData: screenshotDataRaw && screenshotDataRaw !== "__KEEP__" ? screenshotDataRaw : null,
         size,
         quantity,
         costPriceCny,
@@ -204,7 +204,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
     const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
 
-    if (screenshotDataRaw.length > 1_500_000) {
+    if (screenshotDataRaw !== "__KEEP__" && screenshotDataRaw.length > 1_500_000) {
       return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
     }
 
@@ -214,27 +214,32 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const costPrice = costPriceCny * CNY_TO_KZT;
     const margin = (salePrice - costPrice) * quantity * 0.95;
 
+    const updateData: Record<string, unknown> = {
+      productId,
+      clientName,
+      clientPhone,
+      productName,
+      productLink,
+      paidTo,
+      orderDate,
+      paymentDate,
+      size,
+      quantity,
+      costPriceCny,
+      costPrice,
+      salePrice,
+      margin,
+      status,
+      updatedById: session.user.id
+    };
+
+    if (screenshotDataRaw !== "__KEEP__") {
+      updateData.screenshotData = screenshotDataRaw || null;
+    }
+
     await prisma.sale.update({
       where: { id },
-      data: {
-        productId,
-        clientName,
-        clientPhone,
-        productName,
-        productLink,
-        paidTo,
-        orderDate,
-        paymentDate,
-        screenshotData: screenshotDataRaw || null,
-        size,
-        quantity,
-        costPriceCny,
-        costPrice,
-        salePrice,
-        margin,
-        status,
-        updatedById: session.user.id
-      }
+      data: updateData
     });
 
     revalidatePath("/");

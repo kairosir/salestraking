@@ -21,6 +21,7 @@ model User {
   updatedSales  Sale[]    @relation("UpdatedBy")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  recipients    NotificationRecipient[]
 }
 
 model Account {
@@ -82,6 +83,7 @@ model Sale {
   updatedBy      User     @relation("UpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  notificationLogs NotificationLog[]
 
   @@index([productId])
   @@index([clientName])
@@ -90,8 +92,46 @@ model Sale {
   @@index([status])
 }
 
+model NotificationRecipient {
+  id               String   @id @default(cuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email            String?  @unique
+  telegramChatId   String?  @unique
+  telegramUsername String?
+  emailEnabled     Boolean  @default(true)
+  telegramEnabled  Boolean  @default(true)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  logs             NotificationLog[]
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model NotificationLog {
+  id          String                @id @default(cuid())
+  kind        NotificationKind
+  windowKey   String
+  saleId      String
+  recipientId String
+  sale        Sale                  @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  recipient   NotificationRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  sentAt      DateTime              @default(now())
+
+  @@unique([kind, windowKey, saleId, recipientId])
+  @@index([saleId])
+  @@index([recipientId])
+}
+
 enum SaleStatus {
   DONE
   TODO
   WAITING
+}
+
+enum NotificationKind {
+  PENDING_3H
+  IN_TRANSIT_10D
 }
