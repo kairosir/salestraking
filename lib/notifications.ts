@@ -2,12 +2,15 @@ import { NotificationKind, SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const ASTANA_TIMEZONE = "Asia/Almaty";
+const ASTANA_UTC_OFFSET_HOURS = 5;
 
 type AstanaParts = {
   year: number;
   month: number;
   day: number;
   hour: number;
+  minute: number;
+  weekday: number;
 };
 
 function astanaParts(date: Date): AstanaParts {
@@ -17,6 +20,7 @@ function astanaParts(date: Date): AstanaParts {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
+    minute: "2-digit",
     hour12: false
   }).formatToParts(date);
 
@@ -25,7 +29,9 @@ function astanaParts(date: Date): AstanaParts {
     year: Number(map.year),
     month: Number(map.month),
     day: Number(map.day),
-    hour: Number(map.hour)
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    weekday: new Date(Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day))).getUTCDay()
   };
 }
 
@@ -39,6 +45,45 @@ function astanaDateKey(date: Date) {
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
+function astanaDateFromParts(parts: Pick<AstanaParts, "year" | "month" | "day">, hour = 0, minute = 0) {
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day, hour - ASTANA_UTC_OFFSET_HOURS, minute, 0, 0));
+}
+
+function shiftAstanaDate(parts: Pick<AstanaParts, "year" | "month" | "day">, days: number) {
+  const utcMidnight = Date.UTC(parts.year, parts.month - 1, parts.day);
+  const shifted = new Date(utcMidnight + days * 86_400_000);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate()
+  };
+}
+
+function formatAstanaPeriodDate(parts: { year: number; month: number; day: number }, time: string) {
+  const d = String(parts.day).padStart(2, "0");
+  const m = String(parts.month).padStart(2, "0");
+  return `${d}.${m}.${parts.year} ${time}`;
+}
+
+function weeklyWindow(now: Date) {
+  const p = astanaParts(now);
+  const daysSinceMonday = (p.weekday + 6) % 7;
+  const monday = shiftAstanaDate(p, -daysSinceMonday);
+  const sunday = shiftAstanaDate(monday, 6);
+  const startUtc = astanaDateFromParts(monday, 6, 0);
+  const endUtc = astanaDateFromParts(sunday, 22, 0);
+  const key = `${monday.year}${String(monday.month).padStart(2, "0")}${String(monday.day).padStart(2, "0")}-${sunday.year}${String(sunday.month).padStart(2, "0")}${String(sunday.day).padStart(2, "0")}`;
+
+  return {
+    monday,
+    sunday,
+    startUtc,
+    endUtc,
+    key,
+    isWeeklySendMoment: p.weekday === 0 && p.hour === 22
+  };
+}
+
 function pendingWindowKey(now: Date) {
   const p = astanaParts(now);
   const block = Math.floor(p.hour / 3);
@@ -47,8 +92,7 @@ function pendingWindowKey(now: Date) {
 
 function pendingMessage(input: { clientName: string; clientPhone: string; productName: string; status: SaleStatus; id: string }) {
   return [
-    "Напоминание по карточке товара",
-    `Статус: ${input.status === "TODO" ? "Доделать" : "Ожидание"}`,
+    `Нужно доработать товар (${input.status === "TODO" ? "Доделать" : "Ожидание"})`,
     `Товар: ${input.productName || "-"}`,
     `Клиент: ${input.clientName || "-"}`,
     `Телефон: ${input.clientPhone || "-"}`,
@@ -65,6 +109,34 @@ function inTransitMessage(input: { clientName: string; clientPhone: string; prod
     `Телефон: ${input.clientPhone || "-"}`,
     `ID: ${input.id}`
   ].join("\n");
+}
+
+function weeklySummaryMessage(input: {
+  startLabel: string;
+  endLabel: string;
+  totalMargin: number;
+  aimShare: number;
+  dashaShare: number;
+  salesCount: number;
+}) {
+  return [
+    "Пора проверить расчет за неделю",
+    `Период: ${input.startLabel} - ${input.endLabel}`,
+    `Карточек в периоде: ${input.salesCount}`,
+    `Общая маржа: ${money(input.totalMargin)}`,
+    `Aim (40%): ${money(input.aimShare)}`,
+    `Dasha (60%): ${money(input.dashaShare)}`
+  ].join("\n");
+}
+
+function money(value: number) {
+  const safe = Number.isFinite(value) ? value : 0;
+  const sign = safe < 0 ? -1 : 1;
+  const abs = Math.abs(safe);
+  const base = Math.floor(abs);
+  const frac = abs - base;
+  const rounded = frac > 0.5 ? base + 1 : base;
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(sign * rounded) + " ₸";
 }
 
 export async function sendTelegramMessage(chatId: string, text: string) {
@@ -194,6 +266,7 @@ export async function runNotifications() {
   const pendingKey = pendingWindowKey(now);
   const dayKey = astanaDateKey(now);
   const nowDayIdx = dayIndexInAstana(now);
+  const week = weeklyWindow(now);
 
   for (const sale of sales) {
     const daysSince = nowDayIdx - dayIndexInAstana(sale.createdAt);
@@ -257,5 +330,63 @@ export async function runNotifications() {
     }
   }
 
-  return { ok: true, sent, skipped, recipients: activeRecipients.length, sales: sales.length };
+  if (week.isWeeklySendMoment) {
+    const [weeklyAgg, weeklyCount] = await Promise.all([
+      prisma.sale.aggregate({
+        where: {
+          createdAt: {
+            gte: week.startUtc,
+            lte: week.endUtc
+          }
+        },
+        _sum: { margin: true }
+      }),
+      prisma.sale.count({
+        where: {
+          createdAt: {
+            gte: week.startUtc,
+            lte: week.endUtc
+          }
+        }
+      })
+    ]);
+
+    const totalMargin = Number(weeklyAgg._sum.margin ?? 0);
+    const aimShare = totalMargin * 0.4;
+    const dashaShare = totalMargin * 0.6;
+    const summaryText = weeklySummaryMessage({
+      startLabel: formatAstanaPeriodDate(week.monday, "06:00"),
+      endLabel: formatAstanaPeriodDate(week.sunday, "22:00"),
+      totalMargin,
+      aimShare,
+      dashaShare,
+      salesCount: weeklyCount
+    });
+
+    for (const recipient of activeRecipients) {
+      let delivered = false;
+      if (recipient.telegramEnabled && recipient.telegramChatId) {
+        const tgResult = await sendTelegramMessage(recipient.telegramChatId, summaryText);
+        delivered = delivered || tgResult.ok;
+      }
+
+      if (delivered) {
+        sent += 1;
+      } else {
+        skipped += 1;
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    sent,
+    skipped,
+    recipients: activeRecipients.length,
+    sales: sales.length,
+    weekly: {
+      enabled: week.isWeeklySendMoment,
+      windowKey: `weekly-${week.key}`
+    }
+  };
 }
