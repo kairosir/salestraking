@@ -66,7 +66,7 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
         createPortal(
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
-          <div className="relative z-10 h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] p-4 sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
+          <div className="relative z-10 h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl font-semibold text-text">Расчет общей маржи</h3>
@@ -84,7 +84,7 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text outline-none transition focus:border-accent"
+                  className="h-10 w-full rounded-xl border border-line bg-card px-3 text-sm text-text outline-none transition focus:border-accent"
                 />
               </label>
               <label className="space-y-1">
@@ -93,7 +93,7 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text outline-none transition focus:border-accent"
+                  className="h-10 w-full rounded-xl border border-line bg-card px-3 text-sm text-text outline-none transition focus:border-accent"
                 />
               </label>
             </div>
@@ -113,7 +113,7 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-line bg-[#04111f] px-3 py-2.5">
+    <div className="flex items-center justify-between rounded-xl border border-line bg-card px-3 py-2.5">
       <p className="text-sm text-muted">{label}</p>
       <p className="text-base font-semibold text-text">{value}</p>
     </div>

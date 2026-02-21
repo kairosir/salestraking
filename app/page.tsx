@@ -84,8 +84,8 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-bg bg-mesh">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
-        <header className="rounded-3xl border border-line bg-[#031021cc] p-4 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-3 py-5 sm:px-5">
+        <header className="rounded-3xl border border-line bg-card/75 p-4 backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm text-muted">Aimuselim Online Store</p>

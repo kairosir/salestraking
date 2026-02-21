@@ -152,7 +152,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по клиенту, товару, трек-коду, автору..."
-            className="h-11 w-full rounded-2xl border border-line bg-[#031325] pl-9 pr-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent"
+            className="h-11 w-full rounded-2xl border border-line bg-card pl-9 pr-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent"
           />
         </div>
 
@@ -160,7 +160,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           <select
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            className="h-10 rounded-xl border border-line bg-[#031325] px-3 text-sm outline-none transition focus:border-accent"
+            className="h-10 rounded-xl border border-line bg-card px-3 text-sm outline-none transition focus:border-accent"
           >
             <option value="all">Все авторы</option>
             {authors.map((name) => (
@@ -173,7 +173,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortMode)}
-            className="h-10 rounded-xl border border-line bg-[#031325] px-3 text-sm outline-none transition focus:border-accent"
+            className="h-10 rounded-xl border border-line bg-card px-3 text-sm outline-none transition focus:border-accent"
           >
             <option value="newest">Сначала новые</option>
             <option value="oldest">Сначала старые</option>
@@ -183,7 +183,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-muted">Записей: {filtered.length}</p>
-            <div className="inline-flex rounded-xl border border-line bg-[#031325] p-1 lg:hidden">
+            <div className="inline-flex rounded-xl border border-line bg-card p-1 lg:hidden">
               <button
                 type="button"
                 onClick={() => setMobileView("cards")}
@@ -205,8 +205,8 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
       <div className="hidden rounded-3xl border border-line bg-card/70 lg:block">
         <div className="overflow-x-auto">
-          <div className="min-w-[1320px]">
-            <div className="grid grid-cols-[0.22fr_1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
+          <div className="min-w-[1220px]">
+            <div className="grid grid-cols-[0.2fr_1fr_0.95fr_1.25fr_0.6fr_0.5fr_0.75fr_0.75fr_0.75fr_0.75fr_1fr_0.95fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
               <span>Статус</span>
               <span>Клиент</span>
               <span>Телефон</span>
@@ -227,14 +227,14 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 const revenue = Number(sale.salePrice) * sale.quantity;
 
                 return (
-                  <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[0.22fr_1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr]">
+                  <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[0.2fr_1fr_0.95fr_1.25fr_0.6fr_0.5fr_0.75fr_0.75fr_0.75fr_0.75fr_1fr_0.95fr]">
                     <div className="flex items-center gap-1">
                       <span className={`h-7 w-1.5 rounded-full ${statusColor(sale.status)}`} />
                       {sale.status === "DONE" && <Check size={12} className="text-emerald-300" />}
                     </div>
-                    <p className="truncate text-sm font-medium text-text">{sale.clientName}</p>
+                    <p className="break-words text-sm font-medium leading-4 text-text">{sale.clientName}</p>
                     <div className="flex items-center gap-1.5">
-                      <p className="truncate text-xs text-text">{sale.clientPhone}</p>
+                      <p className="break-all text-xs leading-4 text-text">{sale.clientPhone}</p>
                       {whatsapp && (
                         <a
                           href={whatsapp}
@@ -247,9 +247,9 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                         </a>
                       )}
                     </div>
-                    <div>
-                      <p className="truncate text-xs text-text">{sale.productName}</p>
-                      {sale.productId && <p className="text-[11px] text-muted">Трек: {sale.productId}</p>}
+                    <div className="min-w-0">
+                      <p className="break-words text-xs leading-4 text-text">{sale.productName}</p>
+                      {sale.productId && <p className="break-all text-[11px] text-muted">Трек: {sale.productId}</p>}
                     </div>
                     <p className="text-xs text-text">{sale.size || "-"}</p>
                     <p className="text-xs text-text">{sale.quantity}</p>
@@ -257,7 +257,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     <p className="text-xs text-text">{money(sale.salePrice)}</p>
                     <p className="text-xs font-semibold text-success">{money(sale.margin)}</p>
                     <p className="text-xs text-text">{money(revenue)}</p>
-                    <p className="text-[11px] text-muted">
+                    <p className="break-words text-[11px] leading-4 text-muted">
                       {sale.createdByName} · {dateFmt(sale.createdAt)}
                       <br />
                       изм. {sale.updatedByName}
@@ -283,7 +283,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                             }
                           }
                         }}
-                        className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs text-text transition hover:border-accent"
+                        className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs text-text transition hover:border-accent"
                       >
                         <Eye size={14} />
                         Открыть
@@ -367,11 +367,11 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 Размер: {sale.size || "-"} · Кол-во: {sale.quantity}
               </p>
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border border-line bg-[#031325] p-2">
+                <div className="rounded-lg border border-line bg-card p-2">
                   <p className="text-muted">Маржа</p>
                   <p className="font-semibold text-success">{money(sale.margin)}</p>
                 </div>
-                <div className="rounded-lg border border-line bg-[#031325] p-2">
+                <div className="rounded-lg border border-line bg-card p-2">
                   <p className="text-muted">Выручка</p>
                   <p className="text-text">{money(revenue)}</p>
                 </div>
@@ -395,7 +395,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                       }
                     }
                   }}
-                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs text-text"
+                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs text-text"
                 >
                   <Eye size={14} />
                   Открыть
@@ -460,7 +460,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
       {selectedSale && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
+          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <h3 className="text-xl font-semibold text-text">Карточка товара</h3>
@@ -502,7 +502,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 <img
                   src={selectedSale.screenshotData || screenshotCache[selectedSale.id]}
                   alt="Скрин товара"
-                  className="max-h-[320px] w-full object-contain bg-[#04111f]"
+                  className="max-h-[320px] w-full object-contain bg-card"
                 />
               </div>
             )}
@@ -511,7 +511,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <button
                 type="button"
                 onClick={() => setSelectedSale(null)}
-                className="h-10 rounded-xl border border-line bg-[#04111f] text-sm text-text transition hover:border-accent"
+                className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
               >
                 Закрыть
               </button>
@@ -541,7 +541,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-[#04111f] p-3">
+    <div className="rounded-xl border border-line bg-card p-3">
       <p className="text-xs text-muted">{label}</p>
       <p className="mt-1 text-sm text-text">{value}</p>
     </div>

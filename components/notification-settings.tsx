@@ -21,7 +21,7 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
     <div className="rounded-3xl border border-line bg-card/70 p-4">
       <p className="mb-3 text-sm text-muted">Уведомления (Telegram)</p>
 
-      <div className="mb-3 rounded-xl border border-line bg-[#031325] p-3 text-xs text-muted">
+      <div className="mb-3 rounded-xl border border-line bg-card p-3 text-xs text-muted">
         <p>Telegram: отправьте боту команду `/start {loginHint}` чтобы привязать чат к вашему аккаунту.</p>
         <p className="mt-1">Email-уведомления временно отключены. Работают только Telegram-уведомления.</p>
         <p className="mt-1">Напоминания: каждые 3 часа по товарам со статусом `Доделать/Ожидание`.</p>
@@ -44,7 +44,7 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
               setMessage(`Тест отправлен. Отправлено: ${result.sent ?? 0}, пропущено: ${result.skipped ?? 0}`);
             })
           }
-          className="h-10 rounded-xl border border-line bg-[#04111f] px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
+          className="h-10 rounded-xl border border-line bg-card px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
         >
           Тест уведомлений (tg)
         </button>
@@ -63,7 +63,7 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
               setMessage(`Рассылка запущена вручную. Отправлено: ${result.sent ?? 0}, пропущено: ${result.skipped ?? 0}`);
             })
           }
-          className="h-10 rounded-xl border border-line bg-[#04111f] px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
+          className="h-10 rounded-xl border border-line bg-card px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
         >
           Запустить рассылку сейчас
         </button>
@@ -74,7 +74,7 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
       <div className="space-y-2">
         {recipients.length === 0 && <p className="text-xs text-muted">Получателей пока нет.</p>}
         {recipients.map((r) => (
-          <div key={r.id} className="rounded-xl border border-line bg-[#031325] p-3 text-xs text-muted">
+          <div key={r.id} className="rounded-xl border border-line bg-card p-3 text-xs text-muted">
             <p>Telegram: {r.telegramUsername ? `@${r.telegramUsername}` : r.telegramChatId || "-"}</p>
             <p>Активен: {r.isActive ? "Да" : "Нет"}</p>
           </div>

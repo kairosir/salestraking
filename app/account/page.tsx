@@ -74,7 +74,7 @@ export default async function AccountPage() {
   return (
     <main className="min-h-screen bg-bg bg-mesh">
       <div className="mx-auto max-w-5xl space-y-4 px-4 py-6 sm:px-6">
-        <header className="rounded-3xl border border-line bg-[#031021cc] p-4 backdrop-blur">
+        <header className="rounded-3xl border border-line bg-card/75 p-4 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted">Личный кабинет</p>
@@ -107,7 +107,7 @@ export default async function AccountPage() {
             <div className="space-y-2">
               {mySales.length === 0 && <p className="text-sm text-muted">У вас пока нет добавленных продаж.</p>}
               {mySales.map((sale) => (
-                <div key={sale.id} className="rounded-xl border border-line bg-[#031325] p-3">
+                <div key={sale.id} className="rounded-xl border border-line bg-card p-3">
                   <p className="text-sm font-semibold text-text">{sale.clientName}</p>
                   <p className="text-xs text-muted">{sale.productName}</p>
                   <p className="text-xs text-success">Маржа: {money(Number(sale.margin))}</p>

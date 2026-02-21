@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -14,8 +14,8 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: "Manrope", "Segoe UI", sans-serif;
-  background: #020b14;
-  color: #d5e6f8;
+  background: #f2ddcc;
+  color: #2f2418;
 }
 
 a {

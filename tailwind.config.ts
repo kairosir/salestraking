@@ -5,19 +5,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#020b14",
-        card: "#071728",
-        line: "#17314a",
-        text: "#d5e6f8",
-        muted: "#7f9db9",
-        accent: "#0ea5e9",
-        success: "#10b981"
+        bg: "#F2DDCC",
+        card: "#DFCCB1",
+        line: "#C4A071",
+        text: "#2F2418",
+        muted: "#6A5139",
+        accent: "#C4A071",
+        success: "#2F8F5B"
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(14,165,233,0.25), 0 12px 40px rgba(14,165,233,0.2)"
+        glow: "0 0 0 1px rgba(196,160,113,0.35), 0 12px 34px rgba(106,81,57,0.18)"
       },
       backgroundImage: {
-        mesh: "radial-gradient(circle at 20% 20%, rgba(14,165,233,0.2), transparent 40%), radial-gradient(circle at 80% 0%, rgba(16,185,129,0.14), transparent 35%)"
+        mesh: "radial-gradient(circle at 12% 12%, rgba(223,204,177,0.75), transparent 42%), radial-gradient(circle at 85% 2%, rgba(196,160,113,0.34), transparent 42%)"
       }
     }
   },

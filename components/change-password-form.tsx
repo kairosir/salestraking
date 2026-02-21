@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { changePasswordAction } from "@/app/actions";
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-line bg-[#031325] px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
+  "h-11 w-full rounded-xl border border-line bg-card px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
 
 export function ChangePasswordForm() {
   const [pending, startTransition] = useTransition();

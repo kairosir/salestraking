@@ -22,7 +22,7 @@ export default async function LoginPage({
 
   return (
     <main className="min-h-screen bg-mesh px-4 py-10">
-      <div className="mx-auto max-w-md rounded-3xl border border-line bg-[#031021cc] p-6 shadow-2xl backdrop-blur">
+      <div className="mx-auto max-w-md rounded-3xl border border-line bg-card/80 p-6 shadow-2xl backdrop-blur">
         <p className="mb-1 text-sm text-muted">Aimuselim Online Store</p>
         <h1 className="mb-4 text-2xl font-semibold">Вход в личный кабинет</h1>
 
@@ -38,7 +38,7 @@ export default async function LoginPage({
               <input
                 name="login"
                 required
-                className="h-11 w-full rounded-xl border border-line bg-[#031325] pl-9 pr-3 text-sm outline-none transition focus:border-accent"
+                className="h-11 w-full rounded-xl border border-line bg-card pl-9 pr-3 text-sm outline-none transition focus:border-accent"
               />
             </div>
           </label>
@@ -51,7 +51,7 @@ export default async function LoginPage({
                 type="password"
                 name="password"
                 required
-                className="h-11 w-full rounded-xl border border-line bg-[#031325] pl-9 pr-3 text-sm outline-none transition focus:border-accent"
+                className="h-11 w-full rounded-xl border border-line bg-card pl-9 pr-3 text-sm outline-none transition focus:border-accent"
               />
             </div>
           </label>

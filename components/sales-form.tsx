@@ -30,7 +30,7 @@ const MAX_SOURCE_IMAGE_BYTES = 15_000_000;
 const SALE_DRAFT_KEY = "salestraking:new-sale-draft:v1";
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-line bg-[#04111f] px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
+  "h-11 w-full rounded-xl border border-line bg-card px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
 
 function Label({ text, required }: { text: string; required?: boolean }) {
   return (
@@ -286,7 +286,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
         }}
         className={
           compact
-            ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-[#04111f] px-2 text-xs font-semibold text-text transition hover:border-accent"
+            ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs font-semibold text-text transition hover:border-accent"
             : "inline-flex items-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-[#00131f] shadow-glow transition hover:brightness-110"
         }
       >
@@ -296,7 +296,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
 
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#020b14] sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl">
+          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl">
             <div className="p-4 sm:p-6">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
@@ -516,7 +516,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       const file = e.dataTransfer.files?.[0];
                       if (file) handleFile(file);
                     }}
-                    className="rounded-2xl border border-dashed border-line bg-[#04111f] p-4 text-center"
+                    className="rounded-2xl border border-dashed border-line bg-card p-4 text-center"
                   >
                     <FileImage className="mx-auto mb-2 text-muted" size={20} />
                     <p className="text-sm text-muted">Перетащите скрин сюда или загрузите кнопкой</p>
@@ -542,7 +542,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                   </div>
                   {screenshotData && (
                     <div className="mt-2 overflow-hidden rounded-xl border border-line">
-                      <img src={screenshotData} alt="Скрин товара" className="max-h-40 w-full object-contain bg-[#020b14]" />
+                      <img src={screenshotData} alt="Скрин товара" className="max-h-40 w-full object-contain bg-bg" />
                     </div>
                   )}
                 </div>
@@ -556,7 +556,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                         setStatus("DONE");
                         persistDraft({ status: "DONE" });
                       }}
-                      className={`h-10 rounded-xl border text-sm transition ${status === "DONE" ? "border-emerald-400 bg-emerald-500/20 text-emerald-200" : "border-line bg-[#04111f] text-text hover:border-emerald-500/50"}`}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "DONE" ? "border-emerald-400 bg-emerald-500/20 text-emerald-200" : "border-line bg-card text-text hover:border-emerald-500/50"}`}
                     >
                       Выполнено
                     </button>
@@ -566,7 +566,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                         setStatus("TODO");
                         persistDraft({ status: "TODO" });
                       }}
-                      className={`h-10 rounded-xl border text-sm transition ${status === "TODO" ? "border-rose-400 bg-rose-500/20 text-rose-200" : "border-line bg-[#04111f] text-text hover:border-rose-500/50"}`}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "TODO" ? "border-rose-400 bg-rose-500/20 text-rose-200" : "border-line bg-card text-text hover:border-rose-500/50"}`}
                     >
                       Доделать
                     </button>
@@ -576,14 +576,14 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                         setStatus("WAITING");
                         persistDraft({ status: "WAITING" });
                       }}
-                      className={`h-10 rounded-xl border text-sm transition ${status === "WAITING" ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-line bg-[#04111f] text-text hover:border-amber-500/50"}`}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "WAITING" ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-line bg-card text-text hover:border-amber-500/50"}`}
                     >
                       Ожидание
                     </button>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-line bg-[#04111f] px-4 py-3">
+                <div className="rounded-2xl border border-line bg-card px-4 py-3">
                   <div className="flex items-center justify-between text-sm text-muted">
                     <span>Цена товара в тенге</span>
                     <span className="font-semibold text-text">{money(costPriceKzt)}</span>
@@ -604,7 +604,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="h-11 rounded-xl border border-line bg-[#04111f] text-sm text-text transition hover:border-accent"
+                    className="h-11 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
                   >
                     Отмена
                   </button>
@@ -626,7 +626,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
 
       {cropSource && (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-line bg-[#020b14] p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-line bg-bg p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold text-text">Обрезка скрина</p>
               <button
@@ -659,7 +659,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
               <button
                 type="button"
                 onClick={() => setCropSource("")}
-                className="h-10 rounded-xl border border-line bg-[#04111f] text-sm text-text transition hover:border-accent"
+                className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
               >
                 Отмена
               </button>
