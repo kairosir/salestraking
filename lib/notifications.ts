@@ -119,7 +119,7 @@ export async function runTestNotifications() {
   const recipients = await prisma.notificationRecipient.findMany({
     where: { isActive: true }
   });
-  const activeRecipients = recipients.filter((r) => (r.telegramEnabled && r.telegramChatId) || (r.emailEnabled && r.email));
+  const activeRecipients = recipients.filter((r) => r.telegramEnabled && r.telegramChatId);
 
   let sent = 0;
   let skipped = 0;
@@ -130,10 +130,6 @@ export async function runTestNotifications() {
     if (recipient.telegramEnabled && recipient.telegramChatId) {
       const tg = await sendTelegramMessage(recipient.telegramChatId, text);
       delivered = delivered || tg.ok;
-    }
-    if (recipient.emailEnabled && recipient.email) {
-      const mail = await sendEmailMessage(recipient.email, "Тестовое уведомление Salestraking", text);
-      delivered = delivered || mail.ok;
     }
 
     if (delivered) sent += 1;
@@ -174,7 +170,7 @@ export async function runNotifications() {
   const recipients = await prisma.notificationRecipient.findMany({
     where: { isActive: true }
   });
-  const activeRecipients = recipients.filter((r) => (r.telegramEnabled && r.telegramChatId) || (r.emailEnabled && r.email));
+  const activeRecipients = recipients.filter((r) => r.telegramEnabled && r.telegramChatId);
   if (!activeRecipients.length) {
     return { ok: true, sent: 0, skipped: 0, reason: "no recipients" };
   }
@@ -219,10 +215,6 @@ export async function runNotifications() {
           const tgResult = await sendTelegramMessage(recipient.telegramChatId, text);
           delivered = delivered || tgResult.ok;
         }
-        if (recipient.emailEnabled && recipient.email) {
-          const emailResult = await sendEmailMessage(recipient.email, "Напоминание: карточка товара требует действия", text);
-          delivered = delivered || emailResult.ok;
-        }
 
         if (delivered) {
           await saveSent(NotificationKind.PENDING_3H, pendingKey, sale.id, recipient.id);
@@ -254,10 +246,6 @@ export async function runNotifications() {
       if (recipient.telegramEnabled && recipient.telegramChatId) {
         const tgResult = await sendTelegramMessage(recipient.telegramChatId, transitText);
         delivered = delivered || tgResult.ok;
-      }
-      if (recipient.emailEnabled && recipient.email) {
-        const emailResult = await sendEmailMessage(recipient.email, "Проверка: товар в пути", transitText);
-        delivered = delivered || emailResult.ok;
       }
 
       if (delivered) {
