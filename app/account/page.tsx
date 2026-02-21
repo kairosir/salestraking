@@ -23,7 +23,7 @@ export default async function AccountPage() {
   const recipientWhere: Array<{ userId: string } | { email: string }> = [{ userId: session.user.id }];
   if (session.user.email) recipientWhere.push({ email: session.user.email });
 
-  const [mySales, allMySalesForRevenue, myAgg, recipients] = await Promise.all([
+  const [mySales, allMySalesForRevenue, myAgg] = await Promise.all([
     prisma.sale.findMany({
       where: { createdById: session.user.id },
       orderBy: { createdAt: "desc" },
@@ -37,8 +37,20 @@ export default async function AccountPage() {
       where: { createdById: session.user.id },
       _sum: { margin: true },
       _count: { id: true }
-    }),
-    prisma.notificationRecipient.findMany({
+    })
+  ]);
+
+  let recipients: Array<{
+    id: string;
+    email: string | null;
+    telegramChatId: string | null;
+    telegramUsername: string | null;
+    emailEnabled: boolean;
+    telegramEnabled: boolean;
+    isActive: boolean;
+  }> = [];
+  try {
+    recipients = await prisma.notificationRecipient.findMany({
       where: { OR: recipientWhere },
       orderBy: { createdAt: "desc" },
       select: {
@@ -50,8 +62,10 @@ export default async function AccountPage() {
         telegramEnabled: true,
         isActive: true
       }
-    })
-  ]);
+    });
+  } catch (error) {
+    console.error("notificationRecipient query failed:", error);
+  }
 
   const totalMargin = Number(myAgg._sum.margin ?? 0);
   const totalRevenue = allMySalesForRevenue.reduce((sum, sale) => sum + Number(sale.salePrice) * sale.quantity, 0);
