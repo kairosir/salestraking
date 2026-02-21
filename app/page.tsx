@@ -67,6 +67,7 @@ export default async function Home() {
     costPrice: decimalText(s.costPrice),
     salePrice: decimalText(s.salePrice),
     margin: decimalText(s.margin),
+    status: s.status,
     createdAt: s.createdAt.toISOString(),
     createdByName: s.createdBy?.name || s.createdBy?.username || s.createdBy?.email || "Unknown",
     updatedByName: s.updatedBy?.name || s.updatedBy?.username || s.updatedBy?.email || "Unknown"

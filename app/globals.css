@@ -28,3 +28,19 @@ button,
 select {
   font: inherit;
 }
+
+@keyframes pulse-alert {
+  0%,
+  100% {
+    opacity: 1;
+    filter: saturate(1);
+  }
+  50% {
+    opacity: 0.3;
+    filter: saturate(1.5);
+  }
+}
+
+.status-blink {
+  animation: pulse-alert 1.1s linear infinite;
+}

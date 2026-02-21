@@ -5,6 +5,7 @@ import { compare, hash } from "bcryptjs";
 import { auth, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saleSchema } from "@/lib/sale-schema";
+import type { SaleStatus } from "@prisma/client";
 
 const CNY_TO_KZT = 80;
 
@@ -24,6 +25,11 @@ function normalizeOptionalDateString(value: unknown) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed || undefined;
+}
+
+function normalizeStatus(value: unknown): SaleStatus {
+  if (value === "DONE" || value === "TODO" || value === "WAITING") return value;
+  return "WAITING";
 }
 
 export async function loginWithCredentials(formData: FormData) {
@@ -89,6 +95,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       paymentDate: formData.get("paymentDate"),
       screenshotData: formData.get("screenshotData"),
       size: formData.get("size"),
+      status: formData.get("status"),
       quantity: formData.get("quantity"),
       costPriceCny: formData.get("costPriceCny"),
       salePrice: formData.get("salePrice")
@@ -100,13 +107,14 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
 
     const data = parsed.data as Record<string, unknown>;
 
-    const clientName = String(data.clientName ?? "").trim();
+    const clientName = String(data.clientName ?? "").trim() || "Без имени";
     const clientPhone = String(data.clientPhone ?? "").trim();
-    const productName = String(data.productName ?? "").trim();
+    const productName = String(data.productName ?? "").trim() || "Без товара";
     const productId = normalizeOptionalString(data.productId);
     const productLink = normalizeOptionalString(data.productLink);
     const paidTo = normalizeOptionalString(data.paidTo);
     const size = normalizeOptionalString(data.size);
+    const status = normalizeStatus(data.status);
     const orderDate = parseDate(normalizeOptionalDateString(data.orderDate));
     const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
     const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
@@ -117,7 +125,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
 
     const costPriceCny = Number(data.costPriceCny);
     const salePrice = Number(data.salePrice);
-    const quantity = Number(data.quantity);
+    const quantity = Math.max(1, Number(data.quantity) || 1);
     const costPrice = costPriceCny * CNY_TO_KZT;
     const margin = (salePrice - costPrice) * quantity;
 
@@ -138,6 +146,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         costPrice,
         salePrice,
         margin,
+        status,
         createdById: session.user.id,
         updatedById: session.user.id
       }
@@ -171,6 +180,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       paymentDate: formData.get("paymentDate"),
       screenshotData: formData.get("screenshotData"),
       size: formData.get("size"),
+      status: formData.get("status"),
       quantity: formData.get("quantity"),
       costPriceCny: formData.get("costPriceCny"),
       salePrice: formData.get("salePrice")
@@ -182,13 +192,14 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
 
     const data = parsed.data as Record<string, unknown>;
 
-    const clientName = String(data.clientName ?? "").trim();
+    const clientName = String(data.clientName ?? "").trim() || "Без имени";
     const clientPhone = String(data.clientPhone ?? "").trim();
-    const productName = String(data.productName ?? "").trim();
+    const productName = String(data.productName ?? "").trim() || "Без товара";
     const productId = normalizeOptionalString(data.productId);
     const productLink = normalizeOptionalString(data.productLink);
     const paidTo = normalizeOptionalString(data.paidTo);
     const size = normalizeOptionalString(data.size);
+    const status = normalizeStatus(data.status);
     const orderDate = parseDate(normalizeOptionalDateString(data.orderDate));
     const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
     const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
@@ -199,7 +210,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
 
     const costPriceCny = Number(data.costPriceCny);
     const salePrice = Number(data.salePrice);
-    const quantity = Number(data.quantity);
+    const quantity = Math.max(1, Number(data.quantity) || 1);
     const costPrice = costPriceCny * CNY_TO_KZT;
     const margin = (salePrice - costPrice) * quantity;
 
@@ -221,6 +232,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
         costPrice,
         salePrice,
         margin,
+        status,
         updatedById: session.user.id
       }
     });

@@ -19,6 +19,7 @@ type SaleRow = {
   quantity: number;
   costPriceCny: string;
   salePrice: string;
+  status: "DONE" | "TODO" | "WAITING";
 };
 
 const CNY_TO_KZT = 80;
@@ -40,31 +41,6 @@ function money(value: number) {
   return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " ₸";
 }
 
-function normalizePhoneDigits(value: string) {
-  let digits = value.replace(/\D/g, "");
-  if (digits.startsWith("8")) digits = `7${digits.slice(1)}`;
-  if (!digits.startsWith("7")) digits = `7${digits}`;
-  return digits.slice(0, 11);
-}
-
-function formatPhone(value: string) {
-  const digits = normalizePhoneDigits(value);
-  const p = digits.slice(1);
-  const a = p.slice(0, 3);
-  const b = p.slice(3, 6);
-  const c = p.slice(6, 8);
-  const d = p.slice(8, 10);
-
-  let out = "+7";
-  if (a) out += ` (${a}`;
-  if (a.length === 3) out += ")";
-  if (b) out += ` ${b}`;
-  if (c) out += `-${c}`;
-  if (d) out += `-${d}`;
-
-  return out;
-}
-
 function parseFlexibleNumber(value: string) {
   const normalized = value.replace(/\s+/g, "").replace(",", ".");
   const num = Number(normalized);
@@ -84,11 +60,12 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "+7");
+  const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "");
   const [quantity, setQuantity] = useState<number>(sale?.quantity ?? 1);
   const [costPriceCnyInput, setCostPriceCnyInput] = useState<string>(sale?.costPriceCny ?? "0");
   const [salePrice, setSalePrice] = useState<number>(Number(sale?.salePrice ?? 0));
   const [screenshotData, setScreenshotData] = useState<string>(sale?.screenshotData ?? "");
+  const [status, setStatus] = useState<"DONE" | "TODO" | "WAITING">(sale?.status ?? "WAITING");
 
   const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
   const costPriceKzt = useMemo(() => costPriceCny * CNY_TO_KZT, [costPriceCny]);
@@ -180,6 +157,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 className="space-y-4"
               >
                 <input type="hidden" name="screenshotData" value={screenshotData} />
+                <input type="hidden" name="status" value={status} />
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
@@ -204,25 +182,24 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                 </div>
 
                 <div>
-                  <Label text="Имя клиента" required />
-                  <input className={inputClass} placeholder="Иван Иванов" name="clientName" defaultValue={sale?.clientName ?? ""} required />
+                  <Label text="Имя клиента" />
+                  <input className={inputClass} placeholder="Иван Иванов" name="clientName" defaultValue={sale?.clientName ?? ""} />
                 </div>
 
                 <div>
-                  <Label text="Телефон" required />
+                  <Label text="Телефон" />
                   <input
                     className={inputClass}
-                    placeholder="+7 (999) 123-45-67"
+                    placeholder="+7 7771234567 или 87771234567"
                     name="clientPhone"
                     value={clientPhone}
-                    onChange={(e) => setClientPhone(formatPhone(e.target.value))}
-                    required
+                    onChange={(e) => setClientPhone(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <Label text="Товар" required />
-                  <input className={inputClass} placeholder="Название товара" name="productName" defaultValue={sale?.productName ?? ""} required />
+                  <Label text="Товар" />
+                  <input className={inputClass} placeholder="Название товара" name="productName" defaultValue={sale?.productName ?? ""} />
                 </div>
 
                 <div>
@@ -236,7 +213,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                     <input className={inputClass} placeholder="M, L, 42..." name="size" defaultValue={sale?.size ?? ""} />
                   </div>
                   <div>
-                    <Label text="Количество" required />
+                    <Label text="Количество" />
                     <input
                       className={inputClass}
                       placeholder="1"
@@ -245,14 +222,13 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       min={1}
                       defaultValue={sale?.quantity ?? 1}
                       onChange={(e) => setQuantity(Math.max(1, Number(e.target.value || 1)))}
-                      required
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label text="Цена товара (в юанях)" required />
+                    <Label text="Цена товара (в юанях)" />
                     <input
                       className={inputClass}
                       placeholder="Например: 19.5 или 19,5"
@@ -260,12 +236,11 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       inputMode="decimal"
                       defaultValue={sale?.costPriceCny ?? "0"}
                       onChange={(e) => setCostPriceCnyInput(e.target.value)}
-                      required
                     />
                     <p className="mt-1 text-xs text-muted">Конвертация: 1 ¥ = 80 ₸. В тенге: {money(costPriceKzt)}</p>
                   </div>
                   <div>
-                    <Label text="Цена продажи" required />
+                    <Label text="Цена продажи" />
                     <input
                       className={inputClass}
                       placeholder="0"
@@ -275,9 +250,35 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       step="0.01"
                       defaultValue={sale?.salePrice ?? "0"}
                       onChange={(e) => setSalePrice(Number(e.target.value || 0))}
-                      required
                     />
                     <p className="mt-1 text-xs text-muted">Это цена, которую платит клиент</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label text="Статус" />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => setStatus("DONE")}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "DONE" ? "border-emerald-400 bg-emerald-500/20 text-emerald-200" : "border-line bg-[#04111f] text-text hover:border-emerald-500/50"}`}
+                    >
+                      Выполнено
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatus("TODO")}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "TODO" ? "border-rose-400 bg-rose-500/20 text-rose-200" : "border-line bg-[#04111f] text-text hover:border-rose-500/50"}`}
+                    >
+                      Доделать
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatus("WAITING")}
+                      className={`h-10 rounded-xl border text-sm transition ${status === "WAITING" ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-line bg-[#04111f] text-text hover:border-amber-500/50"}`}
+                    >
+                      Ожидание
+                    </button>
                   </div>
                 </div>
 

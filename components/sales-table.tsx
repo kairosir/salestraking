@@ -22,6 +22,7 @@ type Sale = {
   costPrice: string;
   salePrice: string;
   margin: string;
+  status: "DONE" | "TODO" | "WAITING";
   createdAt: string;
   createdByName: string;
   updatedByName: string;
@@ -44,10 +45,25 @@ function onlyDate(value?: string | null) {
 }
 
 function waLink(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const normalized = digits.startsWith("8") ? `7${digits.slice(1)}` : digits;
+  const digitsRaw = phone.replace(/\D/g, "");
+  if (!digitsRaw) return null;
+  let normalized = digitsRaw;
+  if (normalized.length === 10) normalized = `7${normalized}`;
+  if (normalized.startsWith("8") && normalized.length === 11) normalized = `7${normalized.slice(1)}`;
+  if (normalized.length < 11) return null;
   return `https://wa.me/${normalized}`;
+}
+
+function statusLabel(status: Sale["status"]) {
+  if (status === "DONE") return "Выполнено";
+  if (status === "TODO") return "Доделать";
+  return "Ожидание";
+}
+
+function statusColor(status: Sale["status"]) {
+  if (status === "DONE") return "bg-emerald-500";
+  if (status === "TODO") return "bg-rose-500 status-blink";
+  return "bg-amber-400 status-blink";
 }
 
 export function SalesTable({ sales }: { sales: Sale[] }) {
@@ -157,8 +173,9 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
       <div className="hidden rounded-3xl border border-line bg-card/70 lg:block">
         <div className="overflow-x-auto">
-          <div className="min-w-[1280px]">
-            <div className="grid grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
+          <div className="min-w-[1320px]">
+            <div className="grid grid-cols-[0.22fr_1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr] gap-2 border-b border-line px-3 py-2 text-[11px] uppercase tracking-wide text-muted">
+              <span>Статус</span>
               <span>Клиент</span>
               <span>Телефон</span>
               <span>Товар</span>
@@ -178,7 +195,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 const revenue = Number(sale.salePrice) * sale.quantity;
 
                 return (
-                  <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr]">
+                  <div key={sale.id} className="grid items-center gap-2 px-3 py-2.5 lg:grid-cols-[0.22fr_1.1fr_1fr_1.1fr_0.7fr_0.55fr_0.8fr_0.8fr_0.8fr_0.85fr_1.1fr_0.95fr]">
+                    <div className="flex items-center gap-1">
+                      <span className={`h-7 w-1.5 rounded-full ${statusColor(sale.status)}`} />
+                    </div>
                     <p className="truncate text-sm font-medium text-text">{sale.clientName}</p>
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-xs text-text">{sale.clientPhone}</p>
@@ -208,6 +228,8 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                       {sale.createdByName} · {dateFmt(sale.createdAt)}
                       <br />
                       изм. {sale.updatedByName}
+                      <br />
+                      {statusLabel(sale.status)}
                     </p>
 
                     <div className="flex items-center justify-end gap-1.5">
@@ -236,7 +258,8 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                           size: sale.size,
                           quantity: sale.quantity,
                           costPriceCny: sale.costPriceCny,
-                          salePrice: sale.salePrice
+                          salePrice: sale.salePrice,
+                          status: sale.status
                         }}
                       />
 
@@ -267,6 +290,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             <article key={sale.id} className="rounded-2xl border border-line bg-card/70 p-3">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${statusColor(sale.status)}`} />
+                    <p className="text-[11px] text-muted">{statusLabel(sale.status)}</p>
+                  </div>
                   <p className="text-base font-semibold text-text">{sale.clientName}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-xs text-muted">{sale.clientPhone}</p>
@@ -327,7 +354,8 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     size: sale.size,
                     quantity: sale.quantity,
                     costPriceCny: sale.costPriceCny,
-                    salePrice: sale.salePrice
+                    salePrice: sale.salePrice,
+                    status: sale.status
                   }}
                   compact
                 />
@@ -351,6 +379,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             <div key={sale.id} className="rounded-xl border border-line bg-card/70 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${statusColor(sale.status)}`} />
+                    <p className="text-[11px] text-muted">{statusLabel(sale.status)}</p>
+                  </div>
                   <p className="font-medium text-text">{sale.clientName}</p>
                   <p className="text-xs text-muted">{sale.productName}</p>
                 </div>
@@ -391,6 +423,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <Info label="Цена продажи (₸)" value={money(selectedSale.salePrice)} />
               <Info label="Маржа (₸)" value={money(selectedSale.margin)} />
               <Info label="Выручка (₸)" value={money(Number(selectedSale.salePrice) * selectedSale.quantity)} />
+              <Info label="Статус" value={statusLabel(selectedSale.status)} />
               <Info label="Создал" value={selectedSale.createdByName} />
               <Info label="Изменил" value={selectedSale.updatedByName} />
             </div>
