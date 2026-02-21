@@ -335,7 +335,7 @@ export async function runNotificationsNowAction(): Promise<{ ok: boolean; sent?:
   try {
     const session = await auth();
     if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
-    const result = await runNotifications({ userId: session.user.id });
+    const result = await runNotifications({ userId: session.user.id, forceWeekly: true });
     return { ok: true, sent: result.sent, skipped: result.skipped };
   } catch (error) {
     console.error("runNotificationsNowAction failed:", error);

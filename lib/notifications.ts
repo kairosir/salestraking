@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 const ASTANA_TIMEZONE = "Asia/Almaty";
 const ASTANA_UTC_OFFSET_HOURS = 5;
 type NotificationScope = { userId?: string };
+type RunNotificationScope = NotificationScope & { forceWeekly?: boolean };
 
 type AstanaParts = {
   year: number;
@@ -241,7 +242,7 @@ async function saveSent(kind: NotificationKind, windowKey: string, saleId: strin
   });
 }
 
-export async function runNotifications(scope: NotificationScope = {}) {
+export async function runNotifications(scope: RunNotificationScope = {}) {
   const now = new Date();
   const recipients = await prisma.notificationRecipient.findMany({
     where: {
@@ -338,7 +339,8 @@ export async function runNotifications(scope: NotificationScope = {}) {
     }
   }
 
-  if (week.isWeeklySendMoment) {
+  const shouldSendWeekly = week.isWeeklySendMoment || Boolean(scope.forceWeekly);
+  if (shouldSendWeekly) {
     const [weeklyAgg, weeklyCount] = await Promise.all([
       prisma.sale.aggregate({
         where: {
@@ -395,7 +397,7 @@ export async function runNotifications(scope: NotificationScope = {}) {
     recipients: activeRecipients.length,
     sales: sales.length,
     weekly: {
-      enabled: week.isWeeklySendMoment,
+      enabled: shouldSendWeekly,
       windowKey: `weekly-${week.key}`
     }
   };
