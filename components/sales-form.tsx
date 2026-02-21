@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import Cropper, { type Area } from "react-easy-crop";
 import { FileImage, Loader2, Pencil, Plus, Upload, X } from "lucide-react";
 import { createSaleAction, updateSaleAction } from "@/app/actions";
 
@@ -109,6 +110,47 @@ function loadDraft(): SaleDraft {
   }
 }
 
+function estimateDataUrlBytes(dataUrl: string) {
+  const base64 = dataUrl.split(",")[1] ?? "";
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Не удалось загрузить изображение"));
+    image.src = src;
+  });
+}
+
+async function getCroppedDataUrl(imageSrc: string, cropPixels: Area) {
+  const image = await loadImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  const maxSide = 1400;
+  const scale = Math.min(1, maxSide / Math.max(cropPixels.width, cropPixels.height));
+  const width = Math.max(1, Math.round(cropPixels.width * scale));
+  const height = Math.max(1, Math.round(cropPixels.height * scale));
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Не удалось подготовить изображение");
+
+  ctx.drawImage(
+    image,
+    cropPixels.x,
+    cropPixels.y,
+    cropPixels.width,
+    cropPixels.height,
+    0,
+    0,
+    width,
+    height
+  );
+
+  return canvas.toDataURL("image/jpeg", 0.9);
+}
+
 export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -123,6 +165,11 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const [screenshotData, setScreenshotData] = useState<string>(sale?.screenshotData ?? "");
   const [screenshotChanged, setScreenshotChanged] = useState(false);
   const [status, setStatus] = useState<"DONE" | "TODO" | "WAITING">(sale?.status ?? "WAITING");
+  const [cropSource, setCropSource] = useState<string>("");
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [cropPixels, setCropPixels] = useState<Area | null>(null);
+  const [cropPending, setCropPending] = useState(false);
 
   const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
   const salePrice = useMemo(() => parseFlexibleNumber(salePriceInput), [salePriceInput]);
@@ -144,6 +191,27 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
     });
   };
 
+  const applyCroppedImage = async () => {
+    if (!cropSource || !cropPixels) return;
+    setCropPending(true);
+    try {
+      const nextImage = await getCroppedDataUrl(cropSource, cropPixels);
+      if (estimateDataUrlBytes(nextImage) > MAX_IMAGE_BYTES) {
+        setError("Файл после обрезки всё ещё большой. Обрежьте сильнее.");
+        return;
+      }
+      setScreenshotData(nextImage);
+      setScreenshotChanged(true);
+      persistDraft({ screenshotData: nextImage });
+      setCropSource("");
+      setError(null);
+    } catch {
+      setError("Не удалось обрезать изображение");
+    } finally {
+      setCropPending(false);
+    }
+  };
+
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
       setError("Можно загружать только изображения");
@@ -158,13 +226,10 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
     reader.onload = () => {
       const result = String(reader.result ?? "");
       if (!result) return;
-      if (result.length > 1_500_000) {
-        setError("Файл слишком большой. Выберите изображение поменьше.");
-        return;
-      }
-      setScreenshotData(result);
-      setScreenshotChanged(true);
-      persistDraft({ screenshotData: result });
+      setCropSource(result);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCropPixels(null);
       setError(null);
     };
     reader.readAsDataURL(file);
@@ -440,6 +505,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) handleFile(file);
+                        e.currentTarget.value = "";
                       }}
                     />
                   </div>
@@ -522,6 +588,65 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cropSource && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-line bg-[#020b14] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-text">Обрезка скрина</p>
+              <button
+                type="button"
+                className="rounded-lg p-1 text-muted transition hover:bg-card hover:text-text"
+                onClick={() => setCropSource("")}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="relative h-72 overflow-hidden rounded-xl bg-black">
+              <Cropper
+                image={cropSource}
+                crop={crop}
+                zoom={zoom}
+                aspect={4 / 3}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, croppedAreaPixels) => setCropPixels(croppedAreaPixels)}
+                objectFit="contain"
+              />
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <span className="text-xs text-muted">Масштаб</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.1}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setCropSource("")}
+                className="h-10 rounded-xl border border-line bg-[#04111f] text-sm text-text transition hover:border-accent"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={applyCroppedImage}
+                disabled={cropPending}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-[#00131f] transition hover:brightness-110 disabled:opacity-70"
+              >
+                {cropPending && <Loader2 size={14} className="animate-spin" />}
+                Применить
+              </button>
             </div>
           </div>
         </div>
