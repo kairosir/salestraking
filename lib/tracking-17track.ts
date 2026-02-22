@@ -139,13 +139,30 @@ async function call17Track(apiKey: string, path: string, body: unknown) {
   return json;
 }
 
+function ensure17TrackBusinessSuccess(payload: unknown) {
+  const obj = payload as Record<string, unknown> | null;
+  if (!obj || typeof obj !== "object") return;
+  const code = Number(obj.code ?? 0);
+  if (Number.isFinite(code) && code !== 0) {
+    throw new Error(`17TRACK business code ${code}`);
+  }
+
+  const data = obj.data as Record<string, unknown> | undefined;
+  const errors = data?.errors as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(errors) && errors.length > 0) {
+    const first = errors[0];
+    const errCode = first?.code ?? "unknown";
+    const errMsg = first?.message ?? "unknown";
+    throw new Error(`17TRACK error ${String(errCode)}: ${String(errMsg)}`);
+  }
+}
+
 async function registerIfNeeded(apiKey: string, trackingNumber: string, registeredAt: Date | null) {
   if (registeredAt) return { ok: true, registeredAt };
 
   try {
-    await call17Track(apiKey, "/register", {
-      data: [{ number: trackingNumber }]
-    });
+    const payload = await call17Track(apiKey, "/register", [{ number: trackingNumber }]);
+    ensure17TrackBusinessSuccess(payload);
     return { ok: true, registeredAt: new Date() };
   } catch {
     return { ok: false, registeredAt: null as Date | null };
@@ -153,9 +170,8 @@ async function registerIfNeeded(apiKey: string, trackingNumber: string, register
 }
 
 async function getTrackInfo(apiKey: string, trackingNumber: string): Promise<Track17Info> {
-  const payload = await call17Track(apiKey, "/gettrackinfo", {
-    data: [{ number: trackingNumber }]
-  });
+  const payload = await call17Track(apiKey, "/gettrackinfo", [{ number: trackingNumber }]);
+  ensure17TrackBusinessSuccess(payload);
 
   const obj = payload as Record<string, unknown> | null;
   const dataRoot = obj?.data as Record<string, unknown> | undefined;
