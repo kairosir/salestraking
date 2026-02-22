@@ -14,6 +14,8 @@ type Track17Info = {
 type SyncSummary = {
   ok: boolean;
   enabled: boolean;
+  candidates: number;
+  groups: number;
   checked: number;
   updated: number;
   failed: number;
@@ -245,6 +247,8 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
     return {
       ok: true,
       enabled: false,
+      candidates: 0,
+      groups: 0,
       checked: 0,
       updated: 0,
       failed: 0,
@@ -270,7 +274,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
   const sales = (await prisma.sale.findMany({
     where: {
       status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
-      trackingArrivedAt: null,
+      ...(scope.force ? {} : { trackingArrivedAt: null }),
       OR: [{ trackingNumber: { not: null } }, { productId: { not: null } }],
       ...dueFilter,
       ...(scope.userId ? { createdById: scope.userId } : {})
@@ -328,7 +332,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       continue;
     }
 
-    if (sale.trackingArrivedAt || looksDelivered(sale.trackingStatus, sale.trackingSubstatus)) {
+    if (!scope.force && (sale.trackingArrivedAt || looksDelivered(sale.trackingStatus, sale.trackingSubstatus))) {
       skipped += 1;
       continue;
     }
@@ -435,6 +439,8 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
   return {
     ok: true,
     enabled: true,
+    candidates: sales.length,
+    groups: grouped.size,
     checked,
     updated,
     failed,
