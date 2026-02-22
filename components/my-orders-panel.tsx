@@ -54,6 +54,7 @@ function groupKey(clientName: string, clientPhone: string, id: string) {
 export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedSale, setSelectedSale] = useState<SaleRow | null>(null);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -130,7 +131,11 @@ export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
                     </div>
                     <div className="divide-y divide-line">
                       {group.sales.map((sale) => (
-                        <div key={sale.id} className="grid items-center gap-2 px-2 py-2 text-xs lg:grid-cols-[1.2fr_0.5fr_0.8fr_0.8fr_0.7fr]">
+                        <div
+                          key={sale.id}
+                          className="grid cursor-pointer items-center gap-2 px-2 py-2 text-xs lg:grid-cols-[1.2fr_0.5fr_0.8fr_0.8fr_0.7fr]"
+                          onClick={() => setSelectedSale(sale)}
+                        >
                           <div className="min-w-0">
                             <p className="truncate font-medium text-text">{sale.productName}</p>
                             {sale.productId && <p className="truncate text-[11px] text-muted">Трек: {sale.productId}</p>}
@@ -138,7 +143,7 @@ export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
                           <span className="text-text">{sale.quantity}</span>
                           <span className="font-semibold text-success">{money(sale.margin)}</span>
                           <span className="text-muted">{sale.status === "DONE" ? "Выдано" : "Доделать"}</span>
-                          <div className="flex justify-end">
+                          <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
                             <SalesForm
                               compact
                               sale={{
@@ -170,7 +175,70 @@ export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
           );
         })}
       </div>
+
+      {selectedSale && (
+        <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
+          <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-muted">Карточка заказа</p>
+                <h3 className="text-xl font-semibold text-text">{selectedSale.productName}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSale(null)}
+                className="rounded-xl border border-line px-3 py-1 text-sm text-muted transition hover:border-accent hover:text-text"
+              >
+                Закрыть
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Info label="Клиент" value={selectedSale.clientName} />
+              <Info label="Телефон" value={selectedSale.clientPhone} />
+              <Info label="Трек код" value={selectedSale.productId || "-"} />
+              <Info label="Размер" value={selectedSale.size || "-"} />
+              <Info label="Количество" value={String(selectedSale.quantity)} />
+              <Info label="Цена товара (¥)" value={selectedSale.costPriceCny} />
+              <Info label="Цена продажи (₸)" value={money(selectedSale.salePrice)} />
+              <Info label="Маржа (₸)" value={money(selectedSale.margin)} />
+              <Info label="Статус" value={selectedSale.status === "DONE" ? "Выдано" : "Доделать"} />
+            </div>
+
+            <div className="mt-4 flex justify-end border-t border-line pt-4">
+              <SalesForm
+                compact
+                sale={{
+                  id: selectedSale.id,
+                  productId: selectedSale.productId,
+                  clientName: selectedSale.clientName,
+                  clientPhone: selectedSale.clientPhone,
+                  productName: selectedSale.productName,
+                  productLink: selectedSale.productLink,
+                  paidTo: selectedSale.paidTo,
+                  orderDate: selectedSale.orderDate,
+                  paymentDate: selectedSale.paymentDate,
+                  screenshotData: selectedSale.screenshotData,
+                  size: selectedSale.size,
+                  quantity: selectedSale.quantity,
+                  costPriceCny: selectedSale.costPriceCny,
+                  salePrice: selectedSale.salePrice,
+                  status: selectedSale.status
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
 
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-card p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-sm text-text">{value}</p>
+    </div>
+  );
+}

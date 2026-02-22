@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { ChevronDown, ChevronRight, Copy, Plus, Save, Trash2, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createScriptAction, deleteScriptAction, updateScriptAction } from "@/app/actions";
 
@@ -22,11 +23,17 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
   const [answer, setAnswer] = useState("");
   const [message, setMessage] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [mounted, setMounted] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     setItems(scripts);
   }, [scripts]);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const sorted = useMemo(() => [...items].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [items]);
 
@@ -74,7 +81,8 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
         <p className="mt-2 text-lg font-semibold leading-none text-text sm:mt-3 sm:text-xl">{sorted.length}</p>
       </button>
 
-      {open && (
+      {open && mounted &&
+        createPortal(
         <div className="fixed inset-0 z-[90] grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
           <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-3xl sm:rounded-3xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -207,7 +215,7 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }
