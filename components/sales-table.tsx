@@ -49,6 +49,7 @@ type Sale = {
   salePrice: string;
   margin: string;
   status: "DONE" | "TODO" | "WAITING";
+  isIssued: boolean;
   createdAt: string;
   createdByName: string;
   updatedByName: string;
@@ -151,6 +152,29 @@ function archiveGroupKey(sale: Pick<Sale, "clientName" | "clientPhone" | "id">) 
   return `u:${sale.id}`;
 }
 
+const CLIENT_DOT_COLORS = [
+  "bg-rose-400",
+  "bg-orange-400",
+  "bg-amber-400",
+  "bg-lime-400",
+  "bg-emerald-400",
+  "bg-teal-400",
+  "bg-cyan-400",
+  "bg-sky-400",
+  "bg-blue-400",
+  "bg-indigo-400",
+  "bg-violet-400",
+  "bg-fuchsia-400"
+] as const;
+
+function clientDotColor(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return CLIENT_DOT_COLORS[hash % CLIENT_DOT_COLORS.length];
+}
+
 export function SalesTable({ sales }: { sales: Sale[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -226,8 +250,8 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
     return unique;
   }, [sales]);
 
-  const activeSales = useMemo(() => sales.filter((sale) => sale.status === "TODO"), [sales]);
-  const archiveSales = useMemo(() => sales.filter((sale) => sale.status === "DONE"), [sales]);
+  const activeSales = useMemo(() => sales.filter((sale) => sale.status !== "WAITING" && !sale.isIssued), [sales]);
+  const archiveSales = useMemo(() => sales.filter((sale) => sale.isIssued), [sales]);
   const trashSales = useMemo(() => sales.filter((sale) => sale.status === "WAITING"), [sales]);
 
   const filteredActiveSales = useMemo(() => {
@@ -422,7 +446,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                       >
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       </button>
-                      <p className="text-sm font-semibold text-text">{group.clientName}</p>
+                      <p className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                        <span className={`h-2.5 w-2.5 rounded-full ${clientDotColor(group.key)}`} />
+                        {group.clientName}
+                      </p>
                       <div className="flex items-center gap-1.5">
                         <p className="text-xs text-text">{group.clientPhone || "-"}</p>
                         {wa && (
@@ -539,7 +566,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 className="flex w-full items-center justify-between gap-2 text-left"
               >
                 <div>
-                  <p className="text-base font-semibold text-text">{group.clientName}</p>
+                  <p className="inline-flex items-center gap-2 text-base font-semibold text-text">
+                    <span className={`h-2.5 w-2.5 rounded-full ${clientDotColor(group.key)}`} />
+                    {group.clientName}
+                  </p>
                   <div className="flex items-center gap-2">
                     <p className="text-xs text-muted">{group.clientPhone}</p>
                     {whatsapp && (
@@ -716,7 +746,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
               <button
                 type="button"
-                disabled={markingDone || selectedSale.status === "DONE"}
+                disabled={markingDone || selectedSale.isIssued}
                 onClick={() => {
                   startMarkingDone(async () => {
                     const result = await markSaleDoneAction(selectedSale.id);
@@ -728,7 +758,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-500/90 px-3 text-sm font-semibold text-[#00131f] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {markingDone && <Loader2 size={14} className="animate-spin" />}
-                {selectedSale.status === "DONE" ? "Выдано ✓" : "Выдано"}
+                {selectedSale.isIssued ? "Выдано ✓" : "Выдано"}
               </button>
             </div>
           </div>
@@ -816,7 +846,10 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                         <div className="flex items-center gap-2">
                           {isExpanded ? <ChevronDown size={15} className="text-muted" /> : <ChevronRight size={15} className="text-muted" />}
                           <div>
-                            <p className="text-sm font-semibold text-text">{group.clientName}</p>
+                            <p className="inline-flex items-center gap-2 text-sm font-semibold text-text">
+                              <span className={`h-2.5 w-2.5 rounded-full ${clientDotColor(group.key)}`} />
+                              {group.clientName}
+                            </p>
                             <p className="text-xs text-muted">{group.clientPhone || "-"}</p>
                           </div>
                           {wa && (

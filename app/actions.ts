@@ -181,6 +181,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       paymentDate,
       screenshotData: screenshotDataRaw && screenshotDataRaw !== "__KEEP__" ? screenshotDataRaw : null,
       status,
+      isIssued: false,
       createdById: session.user.id,
       updatedById: session.user.id
     };
@@ -495,6 +496,7 @@ export async function moveSaleToTrashAction(formData: FormData): Promise<{ ok: b
     where: { id },
     data: {
       status: "WAITING",
+      isIssued: false,
       updatedById: session.user.id
     }
   });
@@ -511,7 +513,7 @@ export async function restoreSalesFromTrashAction(formData: FormData): Promise<{
 
   await prisma.sale.updateMany({
     where: { id: { in: ids }, status: "WAITING" },
-    data: { status: "TODO", updatedById: session.user.id }
+    data: { status: "TODO", isIssued: false, updatedById: session.user.id }
   });
   revalidateSalesPages();
   return { ok: true };
@@ -543,6 +545,7 @@ export async function markSaleDoneAction(id: string): Promise<{ ok: boolean; err
       where: { id },
       data: {
         status: "DONE",
+        isIssued: true,
         updatedById: session.user.id
       }
     });
@@ -564,8 +567,8 @@ export async function restoreArchivedSalesAction(formData: FormData): Promise<{ 
     if (!ids.length) return { ok: false, error: "Не выбраны записи" };
 
     await prisma.sale.updateMany({
-      where: { id: { in: ids }, status: "DONE" },
-      data: { status: "TODO", updatedById: session.user.id }
+      where: { id: { in: ids }, isIssued: true },
+      data: { isIssued: false, updatedById: session.user.id }
     });
 
     revalidateSalesPages();

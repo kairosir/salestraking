@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { DollarSign, KeyRound, User } from "lucide-react";
+import { KeyRound, User } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ChangePasswordForm } from "@/components/change-password-form";
@@ -102,9 +102,9 @@ export default async function AccountPage() {
 
         <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <Card icon={<User size={18} />} label="Пользователь" value={session.user.name || session.user.email || "User"} />
-          <Card icon={<DollarSign size={18} />} label="Мой заработок (маржа)" value={money(totalMargin)} accent />
-          <Card icon={<DollarSign size={18} />} label="Моя выручка" value={money(totalRevenue)} />
-          <Card icon={<DollarSign size={18} />} label="Мои продажи" value={String(totalSalesCount)} />
+          <Card icon={<TengeIcon />} label="Мой заработок (маржа)" value={money(totalMargin)} accent />
+          <Card icon={<TengeIcon />} label="Моя выручка" value={money(totalRevenue)} />
+          <Card icon={<TengeIcon />} label="Мои продажи" value={String(totalSalesCount)} />
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-1">
@@ -146,6 +146,14 @@ export default async function AccountPage() {
         />
       </div>
     </main>
+  );
+}
+
+function TengeIcon() {
+  return (
+    <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-line px-1 text-[11px] font-semibold leading-none">
+      ₸
+    </span>
   );
 }
 

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChartNoAxesCombined, DollarSign, LogOut, TrendingUp, User } from "lucide-react";
+import { ChartNoAxesCombined, LogOut, TrendingUp, User } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SalesForm } from "@/components/sales-form";
@@ -92,6 +92,7 @@ export default async function Home() {
     salePrice: decimalText(s.salePrice),
     margin: decimalText(s.margin),
     status: s.status,
+    isIssued: s.isIssued,
     createdAt: s.createdAt.toISOString(),
     createdByName: s.createdBy?.name || s.createdBy?.username || s.createdBy?.email || "Unknown",
     updatedByName: s.updatedBy?.name || s.updatedBy?.username || s.updatedBy?.email || "Unknown"
@@ -136,7 +137,7 @@ export default async function Home() {
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:mt-4 sm:gap-3 md:grid-cols-5">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
-            <StatCard icon={<DollarSign size={18} />} label="Выручка" value={money(totals.revenue)} />
+            <StatCard icon={<TengeIcon />} label="Выручка" value={money(totals.revenue)} />
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
             <CalculationCard totalNetMargin={totalNetMargin} sales={sales.map((s) => ({ createdAt: s.createdAt.toISOString(), margin: Number(s.margin) }))} />
             <ScriptsBoard
@@ -160,6 +161,14 @@ export default async function Home() {
   );
 }
 
+function TengeIcon() {
+  return (
+    <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-line px-1 text-[11px] font-semibold leading-none">
+      ₸
+    </span>
+  );
+}
+
 function StatCard({
   icon,
   label,
@@ -172,12 +181,12 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="flex h-[86px] flex-col rounded-2xl border border-line bg-card/70 bg-panel p-3 sm:h-28 sm:p-3.5">
+    <div className="flex h-[74px] flex-col rounded-2xl border border-line bg-card/70 bg-panel p-2.5 sm:h-28 sm:p-3.5">
       <p className="inline-flex items-center gap-2 text-xs text-muted sm:text-sm">
         <span>{icon}</span>
         {label}
       </p>
-      <p className={`mt-2 text-lg font-semibold leading-none sm:mt-3 sm:text-xl ${accent ? "text-success" : "text-text"}`}>{value}</p>
+      <p className={`mt-1 text-lg font-semibold leading-none sm:mt-3 sm:text-xl ${accent ? "text-success" : "text-text"}`}>{value}</p>
     </div>
   );
 }
