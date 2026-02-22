@@ -646,6 +646,52 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         })}
       </div>
 
+      <div className={`space-y-2 lg:hidden ${mobileView === "list" ? "block" : "hidden"}`}>
+        {filteredActiveSales.map((sale) => {
+          const revenue = Number(sale.salePrice) * sale.quantity;
+          const wa = waLink(sale.clientPhone);
+          return (
+            <article
+              key={sale.id}
+              className="rounded-xl border border-line bg-card/70 p-2.5"
+              onClick={() => openSaleDetails(sale)}
+            >
+              <div className="flex items-start gap-2">
+                <span className={`mt-1 h-6 w-1.5 shrink-0 rounded-full ${statusColor(sale.status)}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-text">{sale.productName || "-"}</p>
+                  <p className="truncate text-xs text-muted">{sale.clientName}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <p className="truncate text-xs text-muted">{sale.clientPhone || "-"}</p>
+                    {wa && (
+                      <a
+                        href={wa}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300"
+                      >
+                        <MessageCircle size={12} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <p className="shrink-0 text-xs font-semibold text-success">{money(sale.margin)}</p>
+              </div>
+
+              <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-muted">
+                <p>Выручка: <span className="text-text">{money(revenue)}</span></p>
+                <p>Дата: <span className="text-text">{dateFmt(sale.createdAt)}</span></p>
+              </div>
+            </article>
+          );
+        })}
+
+        {filteredActiveSales.length === 0 && (
+          <p className="rounded-xl border border-line bg-card p-3 text-xs text-muted">Нет записей для отображения</p>
+        )}
+      </div>
+
       {selectedSale && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
           <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
