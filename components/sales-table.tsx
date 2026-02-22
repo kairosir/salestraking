@@ -152,6 +152,20 @@ function archiveGroupKey(sale: Pick<Sale, "clientName" | "clientPhone" | "id">) 
   return `u:${sale.id}`;
 }
 
+function parseScreenshotList(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  if (!trimmed.startsWith("[")) return [trimmed];
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (!Array.isArray(parsed)) return [trimmed];
+    return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  } catch {
+    return [trimmed];
+  }
+}
+
 const CLIENT_DOT_COLORS = [
   "bg-rose-400",
   "bg-orange-400",
@@ -196,6 +210,9 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
   const [pendingAction, startPendingAction] = useTransition();
   const [markingDone, startMarkingDone] = useTransition();
+  const selectedScreenshots = selectedSale
+    ? parseScreenshotList(selectedSale.screenshotData || screenshotCache[selectedSale.id] || "")
+    : [];
 
   const confirmMoveSaleToTrash = () => {
     if (!trashTargetSale) return;
@@ -747,9 +764,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               </a>
             )}
 
-            {(selectedSale.screenshotData || screenshotCache[selectedSale.id]) && (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-line">
-                <img src={selectedSale.screenshotData || screenshotCache[selectedSale.id]} alt="Скрин товара" className="max-h-[320px] w-full object-contain bg-card" />
+            {selectedScreenshots.length > 0 && (
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {selectedScreenshots.map((shot, idx) => (
+                  <div key={`selected-shot-${idx}`} className="overflow-hidden rounded-2xl border border-line">
+                    <img src={shot} alt={`Скрин товара ${idx + 1}`} className="max-h-[320px] w-full object-contain bg-card" />
+                  </div>
+                ))}
               </div>
             )}
 

@@ -60,6 +60,28 @@ type SaleLineItem = {
   screenshotData: string | null;
 };
 
+function parseScreenshotList(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  if (!trimmed.startsWith("[")) return [trimmed];
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (!Array.isArray(parsed)) return [trimmed];
+    return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  } catch {
+    return [trimmed];
+  }
+}
+
+function isScreenshotPayloadValid(raw: string | null | undefined) {
+  if (!raw) return true;
+  const list = parseScreenshotList(raw);
+  if (list.some((item) => item.length > 1_500_000)) return false;
+  if (raw.length > 8_000_000) return false;
+  return true;
+}
+
 function parseLineItems(raw: unknown): SaleLineItem[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
   try {
@@ -169,7 +191,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const lineItems = parseLineItems(formData.get("lineItems"));
     const trackingFirstCheckAt = addDays(new Date(), TRACKING_FIRST_CHECK_DAYS);
 
-    if (screenshotDataRaw !== "__KEEP__" && screenshotDataRaw.length > 1_500_000) {
+    if (screenshotDataRaw !== "__KEEP__" && !isScreenshotPayloadValid(screenshotDataRaw)) {
       return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
     }
 
@@ -188,7 +210,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
 
     if (lineItems.length > 0) {
       for (const item of lineItems) {
-        if (item.screenshotData && item.screenshotData.length > 1_500_000) {
+        if (!isScreenshotPayloadValid(item.screenshotData)) {
           return { ok: false, error: "Скрин одного из товаров слишком большой. Выберите более легкий файл." };
         }
       }
@@ -411,7 +433,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
     const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
 
-    if (screenshotDataRaw !== "__KEEP__" && screenshotDataRaw.length > 1_500_000) {
+    if (screenshotDataRaw !== "__KEEP__" && !isScreenshotPayloadValid(screenshotDataRaw)) {
       return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
     }
 

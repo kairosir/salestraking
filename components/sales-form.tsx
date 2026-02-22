@@ -46,6 +46,7 @@ type SaleDraft = {
 };
 
 type CropPixels = { x: number; y: number; width: number; height: number };
+type CropTarget = { itemIndex: number; shotIndex: number | null };
 
 const CNY_TO_KZT = 80;
 const MAX_IMAGE_BYTES = 1_100_000;
@@ -163,6 +164,27 @@ function emptyLineItem(): FormLineItem {
   };
 }
 
+function parseScreenshotList(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  if (!trimmed.startsWith("[")) return [trimmed];
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (!Array.isArray(parsed)) return [trimmed];
+    return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  } catch {
+    return [trimmed];
+  }
+}
+
+function serializeScreenshotList(list: string[]) {
+  const normalized = list.map((item) => item.trim()).filter(Boolean);
+  if (!normalized.length) return "";
+  if (normalized.length === 1) return normalized[0];
+  return JSON.stringify(normalized);
+}
+
 function emptyDraft(): SaleDraft {
   return {
     orderDate: "",
@@ -201,23 +223,27 @@ function loadDraft(): SaleDraft {
 function ItemEditor({
   item,
   index,
+  screenshots,
   expanded,
   removable,
   onToggle,
   onRemove,
   onChange,
   onSelectScreenshot,
-  onEditScreenshot
+  onEditScreenshot,
+  onRemoveScreenshot
 }: {
   item: FormLineItem;
   index: number;
+  screenshots: string[];
   expanded: boolean;
   removable: boolean;
   onToggle: () => void;
   onRemove: () => void;
   onChange: (patch: Partial<FormLineItem>) => void;
   onSelectScreenshot: (index: number) => void;
-  onEditScreenshot: (index: number) => void;
+  onEditScreenshot: (index: number, shotIndex: number) => void;
+  onRemoveScreenshot: (index: number, shotIndex: number) => void;
 }) {
   const qty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
   const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT * qty;
@@ -326,18 +352,8 @@ function ItemEditor({
                 className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
               >
                 <Upload size={14} />
-                Загрузить
+                Добавить скрин
               </button>
-              {item.screenshotData && (
-                <button
-                  type="button"
-                  onClick={() => onEditScreenshot(index)}
-                  className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
-                >
-                  <Pencil size={14} />
-                  Обрезать
-                </button>
-              )}
               {removable && (
                 <button
                   type="button"
@@ -348,9 +364,29 @@ function ItemEditor({
                 </button>
               )}
             </div>
-            {item.screenshotData && (
-              <div className="mt-2 overflow-hidden rounded-xl border border-line">
-                <img src={item.screenshotData} alt="Скрин товара" className="max-h-44 w-full object-contain bg-bg" />
+            {screenshots.length > 0 && (
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {screenshots.map((shot, shotIndex) => (
+                  <div key={`shot-${index}-${shotIndex}`} className="overflow-hidden rounded-xl border border-line bg-bg">
+                    <img src={shot} alt={`Скрин ${shotIndex + 1}`} className="h-28 w-full object-cover" />
+                    <div className="grid grid-cols-2 gap-1 border-t border-line p-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onEditScreenshot(index, shotIndex)}
+                        className="inline-flex h-8 items-center justify-center rounded-lg border border-line text-xs text-text transition hover:border-accent"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveScreenshot(index, shotIndex)}
+                        className="inline-flex h-8 items-center justify-center rounded-lg border border-red-500/40 text-xs text-red-300 transition hover:bg-red-500/10"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -407,7 +443,7 @@ export function SalesForm({
   const [expandedItems, setExpandedItems] = useState<number[]>([0]);
 
   const [cropSource, setCropSource] = useState<string>("");
-  const [cropTargetIndex, setCropTargetIndex] = useState<number | null>(null);
+  const [cropTarget, setCropTarget] = useState<CropTarget | null>(null);
   const cropImageRef = useRef<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Crop>({
     unit: "%",
@@ -468,7 +504,7 @@ export function SalesForm({
       const result = String(reader.result ?? "");
       if (!result) return;
       setCropSource(result);
-      setCropTargetIndex(index);
+      setCropTarget({ itemIndex: index, shotIndex: null });
       setCrop({
         unit: "%",
         x: 10,
@@ -483,7 +519,7 @@ export function SalesForm({
   };
 
   const applyCroppedImage = async () => {
-    if (!cropSource || cropTargetIndex === null) return;
+    if (!cropSource || !cropTarget) return;
     setCropPending(true);
     try {
       const img = cropImageRef.current;
@@ -506,12 +542,23 @@ export function SalesForm({
       }
 
       setLineItems((prev) => {
-        const next = prev.map((item, i) => (i === cropTargetIndex ? { ...item, screenshotData: nextImage } : item));
+        const next = prev.map((item, i) => {
+          if (i !== cropTarget.itemIndex) return item;
+          const list = parseScreenshotList(item.screenshotData);
+          if (cropTarget.shotIndex === null) {
+            list.push(nextImage);
+          } else if (cropTarget.shotIndex >= 0 && cropTarget.shotIndex < list.length) {
+            list[cropTarget.shotIndex] = nextImage;
+          } else {
+            list.push(nextImage);
+          }
+          return { ...item, screenshotData: serializeScreenshotList(list) };
+        });
         persistDraft({ lineItems: next });
         return next;
       });
       setCropSource("");
-      setCropTargetIndex(null);
+      setCropTarget(null);
       setError(null);
     } catch {
       setError("Не удалось обрезать изображение");
@@ -754,6 +801,7 @@ export function SalesForm({
                         key={`item-${index}`}
                         item={item}
                         index={index}
+                        screenshots={parseScreenshotList(item.screenshotData)}
                         expanded={expandedItems.includes(index)}
                         removable={!sale && lineItems.length > 1}
                         onToggle={() => {
@@ -767,13 +815,25 @@ export function SalesForm({
                           setUploadTargetIndex(targetIndex);
                           fileInputRef.current?.click();
                         }}
-                        onEditScreenshot={(targetIndex) => {
-                          const src = lineItems[targetIndex]?.screenshotData;
+                        onEditScreenshot={(targetIndex, shotIndex) => {
+                          const src = parseScreenshotList(lineItems[targetIndex]?.screenshotData)[shotIndex];
                           if (!src) return;
                           setCropSource(src);
-                          setCropTargetIndex(targetIndex);
+                          setCropTarget({ itemIndex: targetIndex, shotIndex });
                           setCrop({ unit: "%", x: 10, y: 10, width: 80, height: 80 });
                           setCropPixels(null);
+                        }}
+                        onRemoveScreenshot={(targetIndex, shotIndex) => {
+                          setLineItems((prev) => {
+                            const next = prev.map((line, i) => {
+                              if (i !== targetIndex) return line;
+                              const list = parseScreenshotList(line.screenshotData);
+                              const filtered = list.filter((_, idx) => idx !== shotIndex);
+                              return { ...line, screenshotData: serializeScreenshotList(filtered) };
+                            });
+                            persistDraft({ lineItems: next });
+                            return next;
+                          });
                         }}
                       />
                     ))}
@@ -857,8 +917,8 @@ export function SalesForm({
       )}
 
       {cropSource && (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-line bg-bg p-4">
+        <div className="fixed inset-0 z-[120] grid place-items-end bg-black/90 p-0 sm:place-items-center sm:p-4">
+          <div className="h-[92vh] w-full rounded-t-3xl border border-line bg-bg p-3 sm:h-auto sm:max-h-[94vh] sm:max-w-4xl sm:rounded-3xl sm:p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold text-text">Обрезка скрина товара</p>
               <button
@@ -866,13 +926,13 @@ export function SalesForm({
                 className="rounded-lg p-1 text-muted transition hover:bg-card hover:text-text"
                 onClick={() => {
                   setCropSource("");
-                  setCropTargetIndex(null);
+                  setCropTarget(null);
                 }}
               >
                 <X size={18} />
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-auto rounded-xl bg-black p-2">
+            <div className="max-h-[76vh] overflow-auto rounded-xl bg-black p-2">
               <ReactCrop
                 crop={crop}
                 onChange={(nextCrop) => setCrop(nextCrop)}
@@ -885,17 +945,16 @@ export function SalesForm({
                   src={cropSource}
                   alt="Обрезка"
                   onLoad={handleCropImageLoad}
-                  className="max-h-[62vh] w-auto max-w-full object-contain"
+                  className="max-h-[72vh] w-auto max-w-full object-contain"
                 />
               </ReactCrop>
             </div>
-            <p className="mt-3 text-xs text-muted">Потяните за углы/края рамки, чтобы обрезать изображение товара.</p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setCropSource("");
-                  setCropTargetIndex(null);
+                  setCropTarget(null);
                 }}
                 className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
               >
