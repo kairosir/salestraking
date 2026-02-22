@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChartNoAxesCombined, DollarSign, TrendingUp, User } from "lucide-react";
+import { ChartNoAxesCombined, DollarSign, LogOut, TrendingUp, User } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SalesForm } from "@/components/sales-form";
@@ -113,17 +113,22 @@ export default async function Home() {
             </div>
 
             <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <div className="hidden items-center gap-2 rounded-2xl border border-line bg-card px-3 py-2 text-sm sm:flex">
-                <User size={15} className="text-muted" />
-                <span>{session.user.name || session.user.email}</span>
-              </div>
-              <Link href="/account" className="rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text">
-                Кабинет
+              <ThemeToggle iconOnly />
+              <Link
+                href="/account"
+                title={session.user.name || session.user.email || "Кабинет"}
+                aria-label="Личный кабинет"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-line bg-card text-muted transition hover:border-accent hover:text-text"
+              >
+                <User size={16} />
               </Link>
               <form action={logoutAction}>
-                <button className="rounded-2xl border border-line bg-card px-4 py-2 text-sm text-muted transition hover:border-accent hover:text-text">
-                  Выйти
+                <button
+                  title="Выйти"
+                  aria-label="Выйти"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-line bg-card text-muted transition hover:border-accent hover:text-text"
+                >
+                  <LogOut size={16} />
                 </button>
               </form>
             </div>

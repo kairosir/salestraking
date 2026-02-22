@@ -13,7 +13,7 @@ function applyTheme(nextTheme: Theme) {
   root.setAttribute("data-theme", nextTheme);
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [ready, setReady] = useState(false);
 
@@ -36,13 +36,13 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line bg-card px-3 text-sm text-muted transition hover:border-accent hover:text-text"
+      className={`inline-flex h-10 items-center rounded-2xl border border-line bg-card text-sm text-muted transition hover:border-accent hover:text-text ${iconOnly ? "w-10 justify-center px-0" : "gap-2 px-3"}`}
       aria-label="Переключить тему"
       title={theme === "dark" ? "Светлая тема" : "Темная тема"}
       disabled={!ready}
     >
       {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-      <span>{theme === "dark" ? "Светлая" : "Темная"}</span>
+      {!iconOnly && <span>{theme === "dark" ? "Светлая" : "Темная"}</span>}
     </button>
   );
 }
