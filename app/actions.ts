@@ -6,6 +6,7 @@ import { auth, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saleSchema } from "@/lib/sale-schema";
 import { runNotifications, runTestNotifications } from "@/lib/notifications";
+import { sync17Track } from "@/lib/tracking-17track";
 import { Prisma, type SaleStatus } from "@prisma/client";
 
 const CNY_TO_KZT = 80;
@@ -652,5 +653,42 @@ export async function runNotificationsGlobalNowAction(): Promise<{ ok: boolean; 
   } catch (error) {
     console.error("runNotificationsGlobalNowAction failed:", error);
     return { ok: false, error: "Не удалось запустить общую рассылку" };
+  }
+}
+
+export async function forceSyncAllTrackingAction(): Promise<{
+  ok: boolean;
+  checked?: number;
+  updated?: number;
+  failed?: number;
+  skipped?: number;
+  error?: string;
+}> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { username: true, email: true, name: true }
+    });
+
+    const probes = [user?.username, user?.email, user?.name, session.user.email, session.user.name]
+      .filter(Boolean)
+      .map((value) => String(value).toLowerCase());
+    const isTestUser = probes.some((value) => value === "test" || value.startsWith("test@"));
+    if (!isTestUser) return { ok: false, error: "Доступно только для test аккаунта" };
+
+    const result = await sync17Track({ force: true });
+    return {
+      ok: true,
+      checked: result.checked,
+      updated: result.updated,
+      failed: result.failed,
+      skipped: result.skipped
+    };
+  } catch (error) {
+    console.error("forceSyncAllTrackingAction failed:", error);
+    return { ok: false, error: "Не удалось запустить проверку трек-кодов" };
   }
 }

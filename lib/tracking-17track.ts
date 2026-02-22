@@ -2,7 +2,7 @@ import { Prisma, SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/notifications";
 
-type SyncScope = { userId?: string };
+type SyncScope = { userId?: string; force?: boolean };
 
 type Track17Info = {
   status: string | null;
@@ -241,16 +241,22 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
   const firstCheckDays = parseDaysEnv("TRACK17_FIRST_CHECK_DAYS", 2);
   const recheckDays = parseDaysEnv("TRACK17_RECHECK_DAYS", 4);
   const now = new Date();
+  const dueFilter = scope.force
+    ? {}
+    : {
+        AND: [
+          {
+            OR: [{ trackingNextCheckAt: null }, { trackingNextCheckAt: { lte: now } }]
+          }
+        ]
+      };
+
   const sales = (await prisma.sale.findMany({
     where: {
       status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
       trackingArrivedAt: null,
       OR: [{ trackingNumber: { not: null } }, { productId: { not: null } }],
-      AND: [
-        {
-          OR: [{ trackingNextCheckAt: null }, { trackingNextCheckAt: { lte: now } }]
-        }
-      ],
+      ...dueFilter,
       ...(scope.userId ? { createdById: scope.userId } : {})
     },
     orderBy: [{ trackingNextCheckAt: "asc" }, { trackingSyncedAt: "asc" }, { createdAt: "desc" }],
@@ -312,7 +318,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
     }
 
     const dueAt = sale.trackingNextCheckAt ?? addDays(sale.createdAt, firstCheckDays);
-    if (dueAt > now) {
+    if (!scope.force && dueAt > now) {
       skipped += 1;
       continue;
     }

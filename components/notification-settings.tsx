@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  forceSyncAllTrackingAction,
   runNotificationsGlobalNowAction,
   runNotificationsNowAction,
   sendTestNotificationsAction,
@@ -18,7 +19,15 @@ type Recipient = {
   isActive: boolean;
 };
 
-export function NotificationSettings({ recipients, loginHint }: { recipients: Recipient[]; loginHint: string }) {
+export function NotificationSettings({
+  recipients,
+  loginHint,
+  canForceTrackingSync
+}: {
+  recipients: Recipient[];
+  loginHint: string;
+  canForceTrackingSync?: boolean;
+}) {
   const [message, setMessage] = useState<string>("");
   const [pending, startTransition] = useTransition();
 
@@ -111,6 +120,29 @@ export function NotificationSettings({ recipients, loginHint }: { recipients: Re
         >
           Запуск общий
         </button>
+
+        {canForceTrackingSync && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                setMessage("");
+                const result = await forceSyncAllTrackingAction();
+                if (!result.ok) {
+                  setMessage(result.error || "Ошибка принудительной проверки");
+                  return;
+                }
+                setMessage(
+                  `Треки проверены принудительно. Проверено: ${result.checked ?? 0}, обновлено: ${result.updated ?? 0}, ошибок: ${result.failed ?? 0}, пропущено: ${result.skipped ?? 0}`
+                );
+              })
+            }
+            className="h-10 rounded-xl border border-line bg-card px-4 text-sm text-text transition hover:border-accent disabled:opacity-60"
+          >
+            Проверить все треки (force)
+          </button>
+        )}
       </div>
 
       {message && <p className="mb-3 text-xs text-muted">{message}</p>}

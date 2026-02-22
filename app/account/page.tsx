@@ -51,6 +51,13 @@ export default async function AccountPage() {
     telegramEnabled: boolean;
     isActive: boolean;
   }> = [];
+  const accountIdentity = [session.user.email, session.user.name].filter(Boolean).map((value) => String(value).toLowerCase());
+  const userMeta = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { username: true, email: true, name: true }
+  });
+  accountIdentity.push(...[userMeta?.username, userMeta?.email, userMeta?.name].filter(Boolean).map((value) => String(value).toLowerCase()));
+  const canForceTrackingSync = accountIdentity.some((value) => value === "test" || value.startsWith("test@"));
   try {
     recipients = await prisma.notificationRecipient.findMany({
       where: { OR: recipientWhere },
@@ -110,7 +117,11 @@ export default async function AccountPage() {
           </div>
         </section>
 
-        <NotificationSettings recipients={recipients} loginHint={session.user.email || session.user.name || "your-login"} />
+        <NotificationSettings
+          recipients={recipients}
+          loginHint={session.user.email || session.user.name || "your-login"}
+          canForceTrackingSync={canForceTrackingSync}
+        />
 
         <MyOrdersPanel
           sales={mySales.map((sale) => ({
