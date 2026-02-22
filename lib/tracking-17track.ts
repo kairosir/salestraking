@@ -57,6 +57,31 @@ function parseLimit() {
   return Math.min(200, Math.floor(raw));
 }
 
+function normalizeTrackStatusCode(value: string | null) {
+  if (!value) return "";
+  return value.replace(/[\s_-]+/g, "").toLowerCase();
+}
+
+function statusRu(value: string | null) {
+  if (!value) return null;
+  const code = normalizeTrackStatusCode(value);
+  const map: Record<string, string> = {
+    notfound: "Не найдено",
+    inforeceived: "Информация получена",
+    intransit: "В пути",
+    outfordelivery: "Передано в доставку",
+    availableforpickup: "Готово к выдаче",
+    pickup: "Готово к выдаче",
+    failedattempt: "Не доставлено",
+    undelivered: "Не доставлено",
+    exception: "Проблема доставки",
+    alert: "Проблема доставки",
+    delivered: "Доставлено",
+    expired: "Истекший трек"
+  };
+  return map[code] || value;
+}
+
 function parseDaysEnv(name: string, fallback: number) {
   const raw = Number(process.env[name] ?? String(fallback));
   if (!Number.isFinite(raw) || raw < 0) return fallback;
@@ -221,7 +246,9 @@ async function getTrackInfo(apiKey: string, trackingNumber: string): Promise<Tra
 
 function looksDelivered(status: string | null, substatus: string | null) {
   const merged = `${status ?? ""} ${substatus ?? ""}`.toLowerCase();
-  return ["delivered", "signed", "pod", "received", "delivered_to_recipient"].some((token) => merged.includes(token));
+  return ["delivered", "signed", "pod", "received", "delivered_to_recipient", "доставлено", "получено"].some((token) =>
+    merged.includes(token)
+  );
 }
 
 function looksArrivedInCountry(status: string | null, substatus: string | null, lastEvent: string | null) {
@@ -255,7 +282,7 @@ function trackingStatusMessage(input: {
     `Телефон: ${input.clientPhone || "-"}`,
     `Номер: ${input.saleId}`,
     `Трек: ${input.trackingNumber}`,
-    `Трек статус: ${input.status || "-"}`
+    `Трек статус: ${statusRu(input.status) || "-"}`
   ].join("\n");
 }
 
@@ -298,7 +325,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
           }
         ]
       };
-  const statusFilter = scope.force ? {} : { status: { in: [SaleStatus.TODO, SaleStatus.DONE] } };
+  const statusFilter = { status: { in: [SaleStatus.TODO, SaleStatus.DONE] } };
 
   const [totalWithTrackCodes, sampleTrackRows] = await Promise.all([
     prisma.sale.count({
@@ -423,8 +450,8 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       const changed = groupedSales.some(
         (item) =>
           item.trackingNumber !== trackingNumber ||
-          item.trackingStatus !== info.status ||
-          item.trackingSubstatus !== info.substatus ||
+          item.trackingStatus !== statusRu(info.status) ||
+          item.trackingSubstatus !== statusRu(info.substatus) ||
           item.trackingLastEvent !== info.lastEvent ||
           item.trackingProvider !== "17TRACK"
       );
@@ -441,8 +468,8 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
           data: {
             trackingNumber,
             trackingProvider: "17TRACK",
-            trackingStatus: info.status,
-            trackingSubstatus: info.substatus,
+            trackingStatus: statusRu(info.status),
+            trackingSubstatus: statusRu(info.substatus),
             trackingLastEvent: info.lastEvent,
             trackingRaw: toJsonInput(info.raw),
             trackingSyncedAt: now,
