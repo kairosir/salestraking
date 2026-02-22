@@ -26,7 +26,7 @@
   - кто изменил
 - Авто-трекинг 17TRACK:
   - берется из поля `Трек-код`
-  - синхронизация по cron
+  - первый чек через 2 дня, затем каждые 4 дня до прибытия в страну
   - статус/подстатус и последнее событие в карточке товара
 - Личный кабинет `/account`:
   - мой заработок (сумма маржи)
@@ -95,8 +95,10 @@ npm run dev
 1. Получи API key в кабинете 17TRACK.
 2. Добавь в `.env` и Vercel:
    - `TRACK17_API_KEY`
-   - `TRACK17_BASE_URL=https://api.17track.net/track/v2.2`
+   - `TRACK17_BASE_URL=https://api.17track.net/track/v2.4`
    - `TRACK17_SYNC_LIMIT=20`
+   - `TRACK17_FIRST_CHECK_DAYS=2`
+   - `TRACK17_RECHECK_DAYS=4`
 3. Cron может бить в:
    - `/api/notifications/run` (уведомления + трекинг)
    - или отдельно `/api/tracking/run`

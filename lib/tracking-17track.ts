@@ -1,5 +1,6 @@
 import { Prisma, SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramMessage } from "@/lib/notifications";
 
 type SyncScope = { userId?: string };
 
@@ -20,7 +21,7 @@ type SyncSummary = {
   reason?: string;
 };
 
-const DEFAULT_BASE_URL = "https://api.17track.net/track/v2.2";
+const DEFAULT_BASE_URL = "https://api.17track.net/track/v2.4";
 
 function normalizeTrackingNumber(value: string | null | undefined) {
   if (!value) return "";
@@ -31,6 +32,18 @@ function parseLimit() {
   const raw = Number(process.env.TRACK17_SYNC_LIMIT ?? "20");
   if (!Number.isFinite(raw) || raw <= 0) return 20;
   return Math.min(200, Math.floor(raw));
+}
+
+function parseDaysEnv(name: string, fallback: number) {
+  const raw = Number(process.env[name] ?? String(fallback));
+  if (!Number.isFinite(raw) || raw < 0) return fallback;
+  return Math.floor(raw);
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
 }
 
 function extractInfo(payload: unknown): Track17Info {
@@ -149,6 +162,41 @@ function looksDelivered(status: string | null, substatus: string | null) {
   return ["delivered", "signed", "pod", "received", "delivered_to_recipient"].some((token) => merged.includes(token));
 }
 
+function looksArrivedInCountry(status: string | null, substatus: string | null, lastEvent: string | null) {
+  const merged = `${status ?? ""} ${substatus ?? ""} ${lastEvent ?? ""}`.toLowerCase();
+  const keywords = [
+    "arrived at destination country",
+    "destination country",
+    "arrived in kazakhstan",
+    "arrived at local facility",
+    "arrival at destination",
+    "import customs",
+    "almaty",
+    "astana",
+    "kazakhstan"
+  ];
+  return keywords.some((token) => merged.includes(token));
+}
+
+function trackingStatusMessage(input: {
+  clientName: string;
+  clientPhone: string;
+  productName: string;
+  trackingNumber: string;
+  status: string | null;
+  substatus: string | null;
+}) {
+  return [
+    "Обновлен трек-статус товара",
+    `Товар: ${input.productName || "-"}`,
+    `Клиент: ${input.clientName || "-"}`,
+    `Телефон: ${input.clientPhone || "-"}`,
+    `Трек: ${input.trackingNumber}`,
+    `Статус: ${input.status || "-"}`,
+    `Подстатус: ${input.substatus || "-"}`
+  ].join("\n");
+}
+
 function toJsonInput(value: unknown): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput {
   if (value === null || value === undefined) return Prisma.DbNull;
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
@@ -172,24 +220,48 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
   }
 
   const limit = parseLimit();
+  const firstCheckDays = parseDaysEnv("TRACK17_FIRST_CHECK_DAYS", 2);
+  const recheckDays = parseDaysEnv("TRACK17_RECHECK_DAYS", 4);
+  const now = new Date();
   const sales = await prisma.sale.findMany({
     where: {
-      status: SaleStatus.TODO,
-      productId: { not: null },
+      status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
+      trackingArrivedAt: null,
+      OR: [{ trackingNumber: { not: null } }, { productId: { not: null } }],
+      AND: [
+        {
+          OR: [{ trackingNextCheckAt: null }, { trackingNextCheckAt: { lte: now } }]
+        }
+      ],
       ...(scope.userId ? { createdById: scope.userId } : {})
     },
-    orderBy: [{ trackingSyncedAt: "asc" }, { createdAt: "desc" }],
+    orderBy: [{ trackingNextCheckAt: "asc" }, { trackingSyncedAt: "asc" }, { createdAt: "desc" }],
     take: limit,
     select: {
       id: true,
       productId: true,
+      clientName: true,
+      clientPhone: true,
+      productName: true,
+      createdAt: true,
       trackingNumber: true,
       trackingStatus: true,
       trackingSubstatus: true,
       trackingLastEvent: true,
+      trackingNextCheckAt: true,
+      trackingArrivedAt: true,
+      trackingLastChangedAt: true,
       trackingRegisteredAt: true,
       trackingProvider: true
     }
+  });
+  const recipients = await prisma.notificationRecipient.findMany({
+    where: {
+      isActive: true,
+      telegramEnabled: true,
+      telegramChatId: { not: null }
+    },
+    select: { telegramChatId: true }
   });
 
   let checked = 0;
@@ -204,7 +276,13 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       continue;
     }
 
-    if (looksDelivered(sale.trackingStatus, sale.trackingSubstatus)) {
+    if (sale.trackingArrivedAt || looksDelivered(sale.trackingStatus, sale.trackingSubstatus)) {
+      skipped += 1;
+      continue;
+    }
+
+    const dueAt = sale.trackingNextCheckAt ?? addDays(sale.createdAt, firstCheckDays);
+    if (dueAt > now) {
       skipped += 1;
       continue;
     }
@@ -221,6 +299,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
         sale.trackingSubstatus !== info.substatus ||
         sale.trackingLastEvent !== info.lastEvent ||
         sale.trackingProvider !== "17TRACK";
+      const arrived = looksArrivedInCountry(info.status, info.substatus, info.lastEvent) || looksDelivered(info.status, info.substatus);
 
       await prisma.sale.update({
         where: { id: sale.id },
@@ -231,12 +310,29 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
           trackingSubstatus: info.substatus,
           trackingLastEvent: info.lastEvent,
           trackingRaw: toJsonInput(info.raw),
-          trackingSyncedAt: new Date(),
-          trackingRegisteredAt: registerResult.registeredAt
+          trackingSyncedAt: now,
+          trackingRegisteredAt: registerResult.registeredAt,
+          trackingNextCheckAt: arrived ? null : addDays(now, recheckDays),
+          trackingArrivedAt: arrived ? now : null,
+          trackingLastChangedAt: changed ? now : sale.trackingLastChangedAt
         }
       });
 
-      if (changed) updated += 1;
+      if (changed) {
+        updated += 1;
+        const message = trackingStatusMessage({
+          clientName: sale.clientName,
+          clientPhone: sale.clientPhone,
+          productName: sale.productName,
+          trackingNumber,
+          status: info.status,
+          substatus: info.substatus
+        });
+        for (const recipient of recipients) {
+          if (!recipient.telegramChatId) continue;
+          await sendTelegramMessage(recipient.telegramChatId, message);
+        }
+      }
     } catch {
       failed += 1;
       await prisma.sale.update({
@@ -244,8 +340,9 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
         data: {
           trackingNumber,
           trackingProvider: "17TRACK",
-          trackingSyncedAt: new Date(),
-          trackingRegisteredAt: registerResult.registeredAt
+          trackingSyncedAt: now,
+          trackingRegisteredAt: registerResult.registeredAt,
+          trackingNextCheckAt: addDays(now, recheckDays)
         }
       });
     }

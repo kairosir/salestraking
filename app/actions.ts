@@ -9,6 +9,13 @@ import { runNotifications, runTestNotifications } from "@/lib/notifications";
 import { Prisma, type SaleStatus } from "@prisma/client";
 
 const CNY_TO_KZT = 80;
+const TRACKING_FIRST_CHECK_DAYS = 2;
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
 
 function parseDate(value?: string) {
   if (!value) return null;
@@ -159,6 +166,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const paymentDate = parseDate(normalizeOptionalDateString(formData.get("paymentDate")));
     const screenshotDataRaw = normalizeOptionalString(formData.get("screenshotData")) ?? "";
     const lineItems = parseLineItems(formData.get("lineItems"));
+    const trackingFirstCheckAt = addDays(new Date(), TRACKING_FIRST_CHECK_DAYS);
 
     if (screenshotDataRaw !== "__KEEP__" && screenshotDataRaw.length > 1_500_000) {
       return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
@@ -198,6 +206,9 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
               trackingLastEvent: null,
               trackingSyncedAt: null,
               trackingRegisteredAt: null,
+              trackingNextCheckAt: item.productId ? trackingFirstCheckAt : null,
+              trackingArrivedAt: null,
+              trackingLastChangedAt: null,
               trackingRaw: Prisma.DbNull,
               productName: item.productName,
               productLink: item.productLink,
@@ -255,6 +266,9 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
           trackingLastEvent: null,
           trackingSyncedAt: null,
           trackingRegisteredAt: null,
+          trackingNextCheckAt: productId ? trackingFirstCheckAt : null,
+          trackingArrivedAt: null,
+          trackingLastChangedAt: null,
           trackingRaw: Prisma.DbNull,
           productName,
           productLink,
@@ -354,6 +368,11 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
 
     const id = String(formData.get("id") ?? "");
     if (!id) return { ok: false, error: "Не найден id записи" };
+    const existingSale = await prisma.sale.findUnique({
+      where: { id },
+      select: { productId: true }
+    });
+    if (!existingSale) return { ok: false, error: "Запись не найдена" };
 
     const parsed = saleSchema.safeParse({
       productId: formData.get("productId"),
@@ -403,13 +422,6 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const updateData: Record<string, unknown> = {
       productId,
       trackingNumber: productId,
-      trackingProvider: productId ? "17TRACK" : null,
-      trackingStatus: null,
-      trackingSubstatus: null,
-      trackingLastEvent: null,
-      trackingSyncedAt: null,
-      trackingRegisteredAt: null,
-      trackingRaw: Prisma.DbNull,
       clientName,
       clientPhone,
       productName,
@@ -426,6 +438,33 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       status,
       updatedById: session.user.id
     };
+
+    const normalizedOld = (existingSale.productId ?? "").trim();
+    const normalizedNew = (productId ?? "").trim();
+    const trackingChanged = normalizedOld !== normalizedNew;
+    if (!productId) {
+      updateData.trackingProvider = null;
+      updateData.trackingStatus = null;
+      updateData.trackingSubstatus = null;
+      updateData.trackingLastEvent = null;
+      updateData.trackingSyncedAt = null;
+      updateData.trackingRegisteredAt = null;
+      updateData.trackingNextCheckAt = null;
+      updateData.trackingArrivedAt = null;
+      updateData.trackingLastChangedAt = null;
+      updateData.trackingRaw = Prisma.DbNull;
+    } else if (trackingChanged) {
+      updateData.trackingProvider = "17TRACK";
+      updateData.trackingStatus = null;
+      updateData.trackingSubstatus = null;
+      updateData.trackingLastEvent = null;
+      updateData.trackingSyncedAt = null;
+      updateData.trackingRegisteredAt = null;
+      updateData.trackingNextCheckAt = addDays(new Date(), TRACKING_FIRST_CHECK_DAYS);
+      updateData.trackingArrivedAt = null;
+      updateData.trackingLastChangedAt = null;
+      updateData.trackingRaw = Prisma.DbNull;
+    }
 
     if (screenshotDataRaw !== "__KEEP__") {
       updateData.screenshotData = screenshotDataRaw || null;

@@ -71,6 +71,9 @@ model Sale {
   trackingLastEvent String?
   trackingSyncedAt DateTime?
   trackingRegisteredAt DateTime?
+  trackingNextCheckAt DateTime?
+  trackingArrivedAt DateTime?
+  trackingLastChangedAt DateTime?
   trackingRaw Json?
   clientName     String
   clientPhone    String
