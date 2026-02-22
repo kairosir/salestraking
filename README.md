@@ -24,6 +24,10 @@
 - Аудит:
   - кто добавил
   - кто изменил
+- Авто-трекинг 17TRACK:
+  - берется из поля `Трек-код`
+  - синхронизация по cron
+  - статус/подстатус и последнее событие в карточке товара
 - Личный кабинет `/account`:
   - мой заработок (сумма маржи)
   - моя выручка
@@ -84,6 +88,19 @@ npm run dev
 
 - `db: "ok"` — БД подключена
 - `auth.credentials: true` — credentials auth активен
+- `tracking.enabled: true` — ключ 17TRACK установлен
+
+## 17TRACK
+
+1. Получи API key в кабинете 17TRACK.
+2. Добавь в `.env` и Vercel:
+   - `TRACK17_API_KEY`
+   - `TRACK17_BASE_URL=https://api.17track.net/track/v2.2`
+   - `TRACK17_SYNC_LIMIT=20`
+3. Cron может бить в:
+   - `/api/notifications/run` (уведомления + трекинг)
+   - или отдельно `/api/tracking/run`
+4. Для ручной проверки: `GET /api/tracking/run?secret=NOTIFY_MANUAL_SECRET`.
 
 ## Автопуш и автодеплой
 

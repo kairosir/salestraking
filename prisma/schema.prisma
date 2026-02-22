@@ -64,6 +64,14 @@ model VerificationToken {
 model Sale {
   id             String   @id @default(cuid())
   productId      String?
+  trackingNumber String?
+  trackingProvider String?
+  trackingStatus String?
+  trackingSubstatus String?
+  trackingLastEvent String?
+  trackingSyncedAt DateTime?
+  trackingRegisteredAt DateTime?
+  trackingRaw Json?
   clientName     String
   clientPhone    String
   productName    String
@@ -88,6 +96,8 @@ model Sale {
   notificationLogs NotificationLog[]
 
   @@index([productId])
+  @@index([trackingNumber])
+  @@index([trackingStatus])
   @@index([clientName])
   @@index([productName])
   @@index([createdAt])

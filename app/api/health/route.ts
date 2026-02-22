@@ -15,6 +15,10 @@ export async function GET() {
     db,
     auth: {
       credentials: true
+    },
+    tracking: {
+      provider: "17TRACK",
+      enabled: Boolean(process.env.TRACK17_API_KEY)
     }
   });
 }

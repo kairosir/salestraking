@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { runNotifications } from "@/lib/notifications";
 import { sync17Track } from "@/lib/tracking-17track";
 
 export async function GET(req: Request) {
@@ -16,6 +15,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  const [tracking, notifications] = await Promise.all([sync17Track(), runNotifications()]);
-  return NextResponse.json({ ...notifications, tracking });
+  const result = await sync17Track();
+  return NextResponse.json(result);
 }

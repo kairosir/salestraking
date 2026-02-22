@@ -6,7 +6,7 @@ import { auth, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saleSchema } from "@/lib/sale-schema";
 import { runNotifications, runTestNotifications } from "@/lib/notifications";
-import type { SaleStatus } from "@prisma/client";
+import { Prisma, type SaleStatus } from "@prisma/client";
 
 const CNY_TO_KZT = 80;
 
@@ -191,6 +191,14 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
               ...shared,
               screenshotData: item.screenshotData || shared.screenshotData,
               productId: item.productId,
+              trackingNumber: item.productId,
+              trackingProvider: item.productId ? "17TRACK" : null,
+              trackingStatus: null,
+              trackingSubstatus: null,
+              trackingLastEvent: null,
+              trackingSyncedAt: null,
+              trackingRegisteredAt: null,
+              trackingRaw: Prisma.DbNull,
               productName: item.productName,
               productLink: item.productLink,
               size: item.size,
@@ -240,6 +248,14 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         data: {
           ...shared,
           productId,
+          trackingNumber: productId,
+          trackingProvider: productId ? "17TRACK" : null,
+          trackingStatus: null,
+          trackingSubstatus: null,
+          trackingLastEvent: null,
+          trackingSyncedAt: null,
+          trackingRegisteredAt: null,
+          trackingRaw: Prisma.DbNull,
           productName,
           productLink,
           size,
@@ -386,6 +402,14 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
 
     const updateData: Record<string, unknown> = {
       productId,
+      trackingNumber: productId,
+      trackingProvider: productId ? "17TRACK" : null,
+      trackingStatus: null,
+      trackingSubstatus: null,
+      trackingLastEvent: null,
+      trackingSyncedAt: null,
+      trackingRegisteredAt: null,
+      trackingRaw: Prisma.DbNull,
       clientName,
       clientPhone,
       productName,
