@@ -21,6 +21,24 @@ type SyncSummary = {
   reason?: string;
 };
 
+type SaleForTracking = {
+  id: string;
+  productId: string | null;
+  clientName: string;
+  clientPhone: string;
+  productName: string;
+  createdAt: Date;
+  trackingNumber: string | null;
+  trackingStatus: string | null;
+  trackingSubstatus: string | null;
+  trackingLastEvent: string | null;
+  trackingNextCheckAt: Date | null;
+  trackingArrivedAt: Date | null;
+  trackingLastChangedAt: Date | null;
+  trackingRegisteredAt: Date | null;
+  trackingProvider: string | null;
+};
+
 const DEFAULT_BASE_URL = "https://api.17track.net/track/v2.4";
 
 function normalizeTrackingNumber(value: string | null | undefined) {
@@ -223,7 +241,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
   const firstCheckDays = parseDaysEnv("TRACK17_FIRST_CHECK_DAYS", 2);
   const recheckDays = parseDaysEnv("TRACK17_RECHECK_DAYS", 4);
   const now = new Date();
-  const sales = await prisma.sale.findMany({
+  const sales = (await prisma.sale.findMany({
     where: {
       status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
       trackingArrivedAt: null,
@@ -254,7 +272,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       trackingRegisteredAt: true,
       trackingProvider: true
     }
-  });
+  })) as SaleForTracking[];
   const recipients = await prisma.notificationRecipient.findMany({
     where: {
       isActive: true,
@@ -269,9 +287,21 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
   let failed = 0;
   let skipped = 0;
 
+  const grouped = new Map<string, SaleForTracking[]>();
   for (const sale of sales) {
-    const trackingNumber = normalizeTrackingNumber(sale.productId || sale.trackingNumber);
+    const trackingNumber = normalizeTrackingNumber(sale.trackingNumber || sale.productId);
     if (!trackingNumber) {
+      skipped += 1;
+      continue;
+    }
+    const current = grouped.get(trackingNumber) ?? [];
+    current.push(sale);
+    grouped.set(trackingNumber, current);
+  }
+
+  for (const [trackingNumber, groupedSales] of grouped.entries()) {
+    const sale = groupedSales[0];
+    if (!sale) {
       skipped += 1;
       continue;
     }
@@ -289,34 +319,55 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
 
     checked += 1;
 
-    const registerResult = await registerIfNeeded(apiKey, trackingNumber, sale.trackingRegisteredAt);
+    const anyRegisteredAt = groupedSales.find((item) => item.trackingRegisteredAt)?.trackingRegisteredAt ?? null;
+    const registerResult = await registerIfNeeded(apiKey, trackingNumber, anyRegisteredAt);
 
     try {
       const info = await getTrackInfo(apiKey, trackingNumber);
-      const changed =
-        sale.trackingNumber !== trackingNumber ||
-        sale.trackingStatus !== info.status ||
-        sale.trackingSubstatus !== info.substatus ||
-        sale.trackingLastEvent !== info.lastEvent ||
-        sale.trackingProvider !== "17TRACK";
+      const changed = groupedSales.some(
+        (item) =>
+          item.trackingNumber !== trackingNumber ||
+          item.trackingStatus !== info.status ||
+          item.trackingSubstatus !== info.substatus ||
+          item.trackingLastEvent !== info.lastEvent ||
+          item.trackingProvider !== "17TRACK"
+      );
       const arrived = looksArrivedInCountry(info.status, info.substatus, info.lastEvent) || looksDelivered(info.status, info.substatus);
+      const nextCheckAt = arrived ? null : addDays(now, recheckDays);
+      const changedAt = changed ? now : sale.trackingLastChangedAt;
 
-      await prisma.sale.update({
-        where: { id: sale.id },
-        data: {
-          trackingNumber,
-          trackingProvider: "17TRACK",
-          trackingStatus: info.status,
-          trackingSubstatus: info.substatus,
-          trackingLastEvent: info.lastEvent,
-          trackingRaw: toJsonInput(info.raw),
-          trackingSyncedAt: now,
-          trackingRegisteredAt: registerResult.registeredAt,
-          trackingNextCheckAt: arrived ? null : addDays(now, recheckDays),
-          trackingArrivedAt: arrived ? now : null,
-          trackingLastChangedAt: changed ? now : sale.trackingLastChangedAt
-        }
-      });
+      await prisma.$transaction([
+        prisma.sale.updateMany({
+          where: {
+            status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
+            OR: [{ trackingNumber }, { productId: trackingNumber }]
+          },
+          data: {
+            trackingNumber,
+            trackingProvider: "17TRACK",
+            trackingStatus: info.status,
+            trackingSubstatus: info.substatus,
+            trackingLastEvent: info.lastEvent,
+            trackingRaw: toJsonInput(info.raw),
+            trackingSyncedAt: now,
+            trackingRegisteredAt: registerResult.registeredAt,
+            trackingNextCheckAt: nextCheckAt,
+            trackingArrivedAt: arrived ? now : null,
+            trackingLastChangedAt: changedAt
+          }
+        }),
+        prisma.trackingCheckLog.create({
+          data: {
+            trackingNumber,
+            status: info.status,
+            substatus: info.substatus,
+            lastEvent: info.lastEvent,
+            arrived,
+            success: true,
+            response: toJsonInput(info.raw)
+          }
+        })
+      ]);
 
       if (changed) {
         updated += 1;
@@ -335,16 +386,28 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       }
     } catch {
       failed += 1;
-      await prisma.sale.update({
-        where: { id: sale.id },
-        data: {
-          trackingNumber,
-          trackingProvider: "17TRACK",
-          trackingSyncedAt: now,
-          trackingRegisteredAt: registerResult.registeredAt,
-          trackingNextCheckAt: addDays(now, recheckDays)
-        }
-      });
+      await prisma.$transaction([
+        prisma.sale.updateMany({
+          where: {
+            status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
+            OR: [{ trackingNumber }, { productId: trackingNumber }]
+          },
+          data: {
+            trackingNumber,
+            trackingProvider: "17TRACK",
+            trackingSyncedAt: now,
+            trackingRegisteredAt: registerResult.registeredAt,
+            trackingNextCheckAt: addDays(now, recheckDays)
+          }
+        }),
+        prisma.trackingCheckLog.create({
+          data: {
+            trackingNumber,
+            success: false,
+            error: "17TRACK sync failed"
+          }
+        })
+      ]);
     }
   }
 

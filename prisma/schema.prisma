@@ -154,6 +154,22 @@ model ScriptTemplate {
   @@index([updatedAt])
 }
 
+model TrackingCheckLog {
+  id             String   @id @default(cuid())
+  trackingNumber String
+  status         String?
+  substatus      String?
+  lastEvent      String?
+  arrived        Boolean  @default(false)
+  success        Boolean  @default(true)
+  error          String?
+  response       Json?
+  checkedAt      DateTime @default(now())
+
+  @@index([trackingNumber, checkedAt])
+  @@index([checkedAt])
+}
+
 enum SaleStatus {
   DONE
   TODO
