@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aimuselim Online Store - Preview</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #ece7e1;
+        --card: #f4f0ea;
+        --line: #c9b8a2;
+        --text: #2f2822;
+        --muted: #7f6f60;
+        --accent: #2a854f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Manrope, Segoe UI, sans-serif;
+        background: radial-gradient(circle at 10% 10%, #f2ddcc 0%, #ece7e1 50%, #dfccb1 100%);
+        color: var(--text);
+      }
+      .wrap { max-width: 920px; margin: 0 auto; padding: 20px 14px 36px; }
+      .card {
+        border: 1px solid var(--line);
+        background: color-mix(in srgb, var(--card) 88%, white 12%);
+        border-radius: 22px;
+        padding: 16px;
+      }
+      h1 { margin: 0; font-size: 26px; }
+      p { margin: 0; }
+      .muted { color: var(--muted); }
+      .row { display: grid; gap: 10px; margin-top: 14px; }
+      .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 40px; border-radius: 12px; border: 1px solid var(--line);
+        padding: 0 14px; text-decoration: none; color: var(--text); font-weight: 600;
+        background: #f8f5f1;
+      }
+      .btn.primary { background: var(--accent); color: #f2fff6; border-color: #1f6f40; }
+      .block { margin-top: 12px; border: 1px dashed var(--line); border-radius: 16px; padding: 12px; }
+      .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .kpi { border: 1px solid var(--line); border-radius: 14px; padding: 10px; background: #f8f5f1; }
+      .kpi b { display: block; margin-top: 6px; font-size: 20px; }
+      @media (min-width: 760px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <p class="muted">Aimuselim Online Store</p>
+        <h1>GitHub Pages Preview</h1>
+        <p class="muted" style="margin-top: 8px">
+          Эта страница для быстрой проверки/демо через GitHub Pages. Полный рабочий сайт с авторизацией, БД и API
+          работает в Vercel.
+        </p>
+
+        <div class="btns">
+          <a class="btn primary" href="https://salestraking.vercel.app" target="_blank" rel="noreferrer">Открыть рабочий сайт</a>
+          <a class="btn" href="https://github.com/kairosir/salestraking/actions/workflows/pages-preview.yml" target="_blank" rel="noreferrer">Статус деплоя Pages</a>
+          <a class="btn" href="https://github.com/kairosir/salestraking" target="_blank" rel="noreferrer">Репозиторий</a>
+        </div>
+
+        <div class="row">
+          <div class="block">
+            <div class="kpis">
+              <div class="kpi"><span class="muted">Продажи</span><b>8</b></div>
+              <div class="kpi"><span class="muted">Выручка</span><b>24 800 ₸</b></div>
+              <div class="kpi"><span class="muted">Маржа</span><b style="color: #2a854f">10 826 ₸</b></div>
+              <div class="kpi"><span class="muted">Расчет</span><b style="color: #2a854f">10 826 ₸</b></div>
+            </div>
+          </div>
+
+          <div class="block">
+            <p class="muted">Что проверять через Pages:</p>
+            <ul>
+              <li>цвета и визуал</li>
+              <li>блоки интерфейса и отступы</li>
+              <li>тексты/названия</li>
+            </ul>
+            <p class="muted">Что проверять только в Vercel:</p>
+            <ul>
+              <li>вход/личный кабинет</li>
+              <li>добавление и редактирование товаров</li>
+              <li>Neon БД и Telegram-уведомления</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
