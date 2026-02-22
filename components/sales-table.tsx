@@ -573,8 +573,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     const revenue = Number(sale.salePrice) * sale.quantity;
                     return (
                       <div key={sale.id} className="rounded-xl border border-line bg-card p-2" onClick={() => openSaleDetails(sale)}>
-                        <p className="text-sm text-text">{sale.productName}</p>
-                        <p className="text-xs text-muted">{dateFmt(sale.createdAt)}</p>
+                        <div className="flex items-start gap-2">
+                          <span className={`mt-1 h-6 w-1.5 shrink-0 rounded-full ${statusColor(sale.status)}`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-text">{sale.productName}</p>
+                            <p className="text-xs text-muted">{dateFmt(sale.createdAt)}</p>
+                          </div>
+                        </div>
                         <div className="mt-1 grid grid-cols-2 gap-2 text-xs">
                           <p className="text-muted">Маржа: <span className="text-success">{money(sale.margin)}</span></p>
                           <p className="text-muted">Выручка: <span className="text-text">{money(revenue)}</span></p>
