@@ -597,9 +597,6 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Info label="Трек код товара" value={selectedSale.productId || "-"} />
               <Info label="Трек статус" value={selectedSale.trackingStatus || "-"} />
-              <Info label="Подстатус" value={selectedSale.trackingSubstatus || "-"} />
-              <Info label="Последнее событие" value={selectedSale.trackingLastEvent || "-"} />
-              <Info label="Синхронизировано" value={onlyDate(selectedSale.trackingSyncedAt)} />
               <Info label="Товар" value={selectedSale.productName} />
               <Info label="Клиент" value={selectedSale.clientName} />
               <div className="rounded-xl border border-line bg-card p-3">
