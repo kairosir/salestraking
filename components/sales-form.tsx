@@ -247,34 +247,19 @@ export function SalesForm({
 
   const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
   const salePrice = useMemo(() => parseFlexibleNumber(salePriceInput), [salePriceInput]);
-  const lineItemsForCreate = useMemo(
-    () => [
-      {
-        productName: productNameInput,
-        productId: productIdInput,
-        productLink: productLinkInput,
-        size: sizeInput,
-        quantity: String(quantity),
-        costPriceCny: costPriceCnyInput,
-        salePrice: salePriceInput
-      },
-      ...extraItems
-    ],
-    [costPriceCnyInput, extraItems, productIdInput, productLinkInput, productNameInput, quantity, salePriceInput, sizeInput]
+  const extraCostCny = useMemo(
+    () => extraItems.reduce((sum, item) => sum + parseFlexibleNumber(item.costPriceCny), 0),
+    [extraItems]
   );
+  const totalCostCny = useMemo(() => costPriceCny + extraCostCny, [costPriceCny, extraCostCny]);
+  const composedProductName = useMemo(() => {
+    const names = [productNameInput.trim(), ...extraItems.map((x) => x.productName.trim()).filter(Boolean)].filter(Boolean);
+    return names.join(" + ");
+  }, [extraItems, productNameInput]);
 
   const totals = useMemo(() => {
-    const costKzt = lineItemsForCreate.reduce((sum, item) => {
-      const itemQty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
-      const itemCostKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
-      return sum + itemCostKzt * itemQty;
-    }, 0);
-
-    const saleKzt = lineItemsForCreate.reduce((sum, item) => {
-      const itemQty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
-      const itemSale = parseFlexibleNumber(item.salePrice);
-      return sum + itemSale * itemQty;
-    }, 0);
+    const saleKzt = salePrice * quantity;
+    const costKzt = totalCostCny * CNY_TO_KZT * quantity;
 
     const marginRaw = saleKzt - costKzt;
     return {
@@ -282,7 +267,7 @@ export function SalesForm({
       marginRaw,
       marginWithFee: marginRaw * 0.95
     };
-  }, [lineItemsForCreate]);
+  }, [quantity, salePrice, totalCostCny]);
 
   const persistDraft = (patch: Partial<SaleDraft>) => {
     if (sale || typeof window === "undefined") return;
@@ -446,16 +431,8 @@ export function SalesForm({
                       formData.set("id", sale.id);
                       result = await updateSaleAction(formData);
                     } else {
-                      const normalizedItems = lineItemsForCreate.map((item) => ({
-                        productName: item.productName,
-                        productId: item.productId,
-                        productLink: item.productLink,
-                        size: item.size,
-                        quantity: item.quantity,
-                        costPriceCny: item.costPriceCny,
-                        salePrice: item.salePrice
-                      }));
-                      formData.set("lineItems", JSON.stringify(normalizedItems));
+                      if (composedProductName) formData.set("productName", composedProductName);
+                      formData.set("costPriceCny", String(totalCostCny));
                       result = await createSaleAction(formData);
                     }
 
@@ -558,81 +535,23 @@ export function SalesForm({
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <input
                               className={inputClass}
-                              placeholder="Товар"
+                              placeholder="Название товара"
                               value={item.productName}
                               onChange={(e) => {
                                 const next = [...extraItems];
-                                next[index] = { ...item, productName: e.target.value };
+                                next[index] = { ...item, productName: e.target.value, quantity: "1" };
                                 setExtraItems(next);
                                 persistCurrentLineItems(next);
                               }}
                             />
                             <input
                               className={inputClass}
-                              placeholder="Трек код"
-                              value={item.productId}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, productId: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Ссылка"
-                              value={item.productLink}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, productLink: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Размер"
-                              value={item.size}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, size: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              type="number"
-                              min={1}
-                              placeholder="Количество"
-                              value={item.quantity}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, quantity: String(Math.max(1, Number(e.target.value || 1))) };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Цена в юанях"
+                              placeholder="Цена товара (в юанях)"
                               value={item.costPriceCny}
                               inputMode="decimal"
                               onChange={(e) => {
                                 const next = [...extraItems];
-                                next[index] = { ...item, costPriceCny: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={`${inputClass} sm:col-span-2`}
-                              placeholder="Цена продажи"
-                              value={item.salePrice}
-                              inputMode="decimal"
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, salePrice: e.target.value };
+                                next[index] = { ...item, costPriceCny: e.target.value, quantity: "1" };
                                 setExtraItems(next);
                                 persistCurrentLineItems(next);
                               }}

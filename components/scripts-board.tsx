@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Copy, Plus, Save, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Plus, Save, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createScriptAction, deleteScriptAction, updateScriptAction } from "@/app/actions";
 
@@ -21,6 +21,7 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [message, setMessage] = useState("");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -74,7 +75,7 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
+        <div className="fixed inset-0 z-[90] grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
           <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-3xl sm:rounded-3xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
@@ -139,65 +140,70 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
 
             <div className="space-y-2">
               {sorted.length === 0 && <p className="text-xs text-muted">Скриптов пока нет.</p>}
-              {sorted.map((item) => (
-                <div key={item.id} className="rounded-xl border border-line bg-card p-3">
-                  <p className="text-xs text-muted">Вопрос клиента</p>
-                  <p className="text-sm text-text">{item.question}</p>
+              {sorted.map((item) => {
+                const isExpanded = expanded[item.id] ?? false;
+                return (
+                  <div key={item.id} className="rounded-xl border border-line bg-card p-3">
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((prev) => ({ ...prev, [item.id]: !isExpanded }))}
+                      className="flex w-full items-center justify-between gap-2 text-left"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted">Вопрос клиента</p>
+                        <p className="truncate text-sm text-text">{item.question}</p>
+                      </div>
+                      {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
+                    </button>
 
-                  <div className="mt-2 flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted">Ответ</p>
-                      <p className="whitespace-pre-wrap text-sm text-text">{item.answer || "-"}</p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard.writeText(item.question || "")}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:text-text"
-                        title="Копировать вопрос"
-                      >
-                        <Copy size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard.writeText(item.answer || "")}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:text-text"
-                        title="Копировать ответ"
-                      >
-                        <Copy size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(item)}
-                        className="inline-flex h-8 items-center justify-center rounded-lg border border-line px-2 text-xs text-muted hover:text-text"
-                        title="Изменить"
-                      >
-                        Изм
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          startTransition(async () => {
-                            const fd = new FormData();
-                            fd.set("id", item.id);
-                            const result = await deleteScriptAction(fd);
-                            if (!result.ok) {
-                              setMessage(result.error || "Не удалось удалить");
-                              return;
-                            }
-                            router.refresh();
-                          });
-                        }}
-                        disabled={pending}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-red-300 hover:border-red-400"
-                        title="Удалить"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {isExpanded && (
+                      <div className="mt-2 border-t border-line pt-2">
+                        <p className="text-xs text-muted">Ответ</p>
+                        <p className="whitespace-pre-wrap text-sm text-text">{item.answer || "-"}</p>
+
+                        <div className="mt-2 flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => navigator.clipboard.writeText(item.answer || "")}
+                            className="inline-flex h-8 items-center justify-center rounded-lg border border-line px-2 text-xs text-muted hover:text-text"
+                            title="Копировать ответ"
+                          >
+                            <Copy size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(item)}
+                            className="inline-flex h-8 items-center justify-center rounded-lg border border-line px-2 text-xs text-muted hover:text-text"
+                            title="Изменить"
+                          >
+                            Изм
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              startTransition(async () => {
+                                const fd = new FormData();
+                                fd.set("id", item.id);
+                                const result = await deleteScriptAction(fd);
+                                if (!result.ok) {
+                                  setMessage(result.error || "Не удалось удалить");
+                                  return;
+                                }
+                                router.refresh();
+                              });
+                            }}
+                            disabled={pending}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-red-300 hover:border-red-400"
+                            title="Удалить"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

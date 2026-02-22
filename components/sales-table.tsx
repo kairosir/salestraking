@@ -58,6 +58,13 @@ type ArchiveGroup = {
   sales: Sale[];
 };
 
+type ActiveGroup = {
+  key: string;
+  clientName: string;
+  clientPhone: string;
+  sales: Sale[];
+};
+
 function money(value: string | number) {
   const numeric = Number(value);
   const safe = Number.isFinite(numeric) ? numeric : 0;
@@ -151,6 +158,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [expandedActiveGroups, setExpandedActiveGroups] = useState<Record<string, boolean>>({});
   const [expandedArchiveGroups, setExpandedArchiveGroups] = useState<Record<string, boolean>>({});
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<Record<string, boolean>>({});
   const [selectedTrashIds, setSelectedTrashIds] = useState<Record<string, boolean>>({});
@@ -200,7 +208,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const archiveSales = useMemo(() => sales.filter((sale) => sale.status === "DONE"), [sales]);
   const trashSales = useMemo(() => sales.filter((sale) => sale.status === "WAITING"), [sales]);
 
-  const filteredActive = useMemo(() => {
+  const filteredActiveSales = useMemo(() => {
     const q = query.trim().toLowerCase();
 
     const byQuery = activeSales.filter((item) => {
@@ -228,6 +236,29 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       return Number(b.salePrice) * b.quantity - Number(a.salePrice) * a.quantity;
     });
   }, [query, activeSales, author, sort]);
+
+  const activeGroups = useMemo(() => {
+    const map = new Map<string, ActiveGroup>();
+    for (const sale of filteredActiveSales) {
+      const key = archiveGroupKey(sale);
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, {
+          key,
+          clientName: sale.clientName || "Без имени",
+          clientPhone: sale.clientPhone || "-",
+          sales: [sale]
+        });
+        continue;
+      }
+      existing.sales.push(sale);
+      if ((!existing.clientPhone || existing.clientPhone === "-") && sale.clientPhone) existing.clientPhone = sale.clientPhone;
+    }
+
+    const groups = Array.from(map.values());
+    groups.sort((a, b) => safeTime(b.sales[0]?.createdAt ?? "") - safeTime(a.sales[0]?.createdAt ?? ""));
+    return groups;
+  }, [filteredActiveSales]);
 
   const archiveGroups = useMemo(() => {
     const map = new Map<string, ArchiveGroup>();
@@ -316,7 +347,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
           </select>
 
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted">Записей: {filteredActive.length}</p>
+            <p className="text-xs text-muted">Записей: {filteredActiveSales.length}</p>
             <div className="inline-flex rounded-xl border border-line bg-card p-1 lg:hidden">
               <button
                 type="button"
@@ -356,91 +387,112 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             </div>
 
             <div className="divide-y divide-line">
-              {filteredActive.map((sale) => {
-                const whatsapp = waLink(sale.clientPhone);
-                const revenue = Number(sale.salePrice) * sale.quantity;
-
+              {activeGroups.map((group) => {
+                const isExpanded = expandedActiveGroups[group.key] ?? false;
+                const wa = waLink(group.clientPhone);
                 return (
-                  <div
-                    key={sale.id}
-                    className="grid cursor-pointer items-center gap-2 px-3 py-2.5 lg:grid-cols-[0.2fr_1fr_0.95fr_1.25fr_0.6fr_0.5fr_0.75fr_0.75fr_0.75fr_0.75fr_1fr_0.95fr]"
-                    onClick={() => openSaleDetails(sale)}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className={`h-7 w-1.5 rounded-full ${statusColor(sale.status)}`} />
-                    </div>
-                    <p className="break-words text-sm font-medium leading-4 text-text">{sale.clientName}</p>
-                    <div className="flex items-center gap-1.5">
-                      <p className="break-all text-xs leading-4 text-text">{sale.clientPhone}</p>
-                      {whatsapp && (
-                        <a
-                          href={whatsapp}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 transition hover:bg-emerald-500/30"
-                          title="Открыть WhatsApp"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <MessageCircle size={12} />
-                        </a>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="break-words text-xs leading-4 text-text">{sale.productName}</p>
-                      {sale.productId && <p className="break-all text-[11px] text-muted">Трек: {sale.productId}</p>}
-                    </div>
-                    <p className="text-xs text-text">{sale.size || "-"}</p>
-                    <p className="text-xs text-text">{sale.quantity}</p>
-                    <p className="text-xs text-text">{money(sale.costPrice)}</p>
-                    <p className="text-xs text-text">{money(sale.salePrice)}</p>
-                    <p className="text-xs font-semibold text-success">{money(sale.margin)}</p>
-                    <p className="text-xs text-text">{money(revenue)}</p>
-                    <p className="break-words text-[11px] leading-4 text-muted">
-                      {sale.createdByName} · {dateFmt(sale.createdAt)}
-                      <br />
-                      изм. {sale.updatedByName}
-                      <br />
-                      {statusLabel(sale.status)}
-                    </p>
-
-                    <div className="flex items-center justify-end gap-1.5" onClick={(event) => event.stopPropagation()}>
-                      <SalesForm
-                        compact
-                        sale={{
-                          id: sale.id,
-                          productId: sale.productId,
-                          clientName: sale.clientName,
-                          clientPhone: sale.clientPhone,
-                          productName: sale.productName,
-                          productLink: sale.productLink,
-                          paidTo: sale.paidTo,
-                          orderDate: sale.orderDate,
-                          paymentDate: sale.paymentDate,
-                          screenshotData: sale.screenshotData,
-                          size: sale.size,
-                          quantity: sale.quantity,
-                          costPriceCny: sale.costPriceCny,
-                          salePrice: sale.salePrice,
-                          status: sale.status === "DONE" ? "DONE" : "TODO"
-                        }}
-                      />
-
+                  <div key={group.key}>
+                    <div className="grid items-center gap-2 px-3 py-2 lg:grid-cols-[0.2fr_1fr_0.95fr_1.25fr_0.6fr_0.5fr_0.75fr_0.75fr_0.75fr_0.75fr_1fr_0.95fr]">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!window.confirm("Переместить карточку в корзину?")) return;
-                          startPendingAction(async () => {
-                            const fd = new FormData();
-                            fd.set("id", sale.id);
-                            await moveSaleToTrashAction(fd);
-                            router.refresh();
-                          });
-                        }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line text-muted transition hover:border-red-400 hover:text-red-300"
+                        onClick={() => setExpandedActiveGroups((prev) => ({ ...prev, [group.key]: !isExpanded }))}
+                        className="inline-flex items-center justify-center rounded-lg border border-line bg-card p-1 text-muted transition hover:border-accent"
                       >
-                        <Trash2 size={14} />
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       </button>
+                      <p className="text-sm font-semibold text-text">{group.clientName}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-text">{group.clientPhone || "-"}</p>
+                        {wa && (
+                          <a
+                            href={wa}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300"
+                          >
+                            <MessageCircle size={12} />
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted lg:col-span-9">{group.sales.length} товар(ов)</p>
                     </div>
+
+                    {isExpanded && (
+                      <div className="space-y-1 pb-1">
+                        {group.sales.map((sale) => {
+                          const revenue = Number(sale.salePrice) * sale.quantity;
+                          return (
+                            <div
+                              key={sale.id}
+                              className="grid cursor-pointer items-center gap-2 px-3 py-2 lg:grid-cols-[0.2fr_1fr_0.95fr_1.25fr_0.6fr_0.5fr_0.75fr_0.75fr_0.75fr_0.75fr_1fr_0.95fr]"
+                              onClick={() => openSaleDetails(sale)}
+                            >
+                              <div className="flex items-center gap-1">
+                                <span className={`h-7 w-1.5 rounded-full ${statusColor(sale.status)}`} />
+                              </div>
+                              <p className="break-words text-sm font-medium leading-4 text-text">{sale.clientName}</p>
+                              <p className="break-all text-xs leading-4 text-text">{sale.clientPhone}</p>
+                              <div className="min-w-0">
+                                <p className="break-words text-xs leading-4 text-text">{sale.productName}</p>
+                                {sale.productId && <p className="break-all text-[11px] text-muted">Трек: {sale.productId}</p>}
+                              </div>
+                              <p className="text-xs text-text">{sale.size || "-"}</p>
+                              <p className="text-xs text-text">{sale.quantity}</p>
+                              <p className="text-xs text-text">{money(sale.costPrice)}</p>
+                              <p className="text-xs text-text">{money(sale.salePrice)}</p>
+                              <p className="text-xs font-semibold text-success">{money(sale.margin)}</p>
+                              <p className="text-xs text-text">{money(revenue)}</p>
+                              <p className="break-words text-[11px] leading-4 text-muted">
+                                {sale.createdByName} · {dateFmt(sale.createdAt)}
+                                <br />
+                                изм. {sale.updatedByName}
+                                <br />
+                                {statusLabel(sale.status)}
+                              </p>
+
+                              <div className="flex items-center justify-end gap-1.5" onClick={(event) => event.stopPropagation()}>
+                                <SalesForm
+                                  compact
+                                  sale={{
+                                    id: sale.id,
+                                    productId: sale.productId,
+                                    clientName: sale.clientName,
+                                    clientPhone: sale.clientPhone,
+                                    productName: sale.productName,
+                                    productLink: sale.productLink,
+                                    paidTo: sale.paidTo,
+                                    orderDate: sale.orderDate,
+                                    paymentDate: sale.paymentDate,
+                                    screenshotData: sale.screenshotData,
+                                    size: sale.size,
+                                    quantity: sale.quantity,
+                                    costPriceCny: sale.costPriceCny,
+                                    salePrice: sale.salePrice,
+                                    status: sale.status === "DONE" ? "DONE" : "TODO"
+                                  }}
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!window.confirm("Переместить карточку в корзину?")) return;
+                                    startPendingAction(async () => {
+                                      const fd = new FormData();
+                                      fd.set("id", sale.id);
+                                      await moveSaleToTrashAction(fd);
+                                      router.refresh();
+                                    });
+                                  }}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line text-muted transition hover:border-red-400 hover:text-red-300"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -450,28 +502,26 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       </div>
 
       <div className={`space-y-3 lg:hidden ${mobileView === "cards" ? "block" : "hidden"}`}>
-        {filteredActive.map((sale) => {
-          const whatsapp = waLink(sale.clientPhone);
-          const revenue = Number(sale.salePrice) * sale.quantity;
-
+        {activeGroups.map((group) => {
+          const isExpanded = expandedActiveGroups[group.key] ?? false;
+          const whatsapp = waLink(group.clientPhone);
           return (
-            <article key={sale.id} className="rounded-2xl border border-line bg-card/70 bg-panel p-3" onClick={() => openSaleDetails(sale)}>
-              <div className="mb-2 flex items-start justify-between gap-2">
+            <article key={group.key} className="rounded-2xl border border-line bg-card/70 bg-panel p-3">
+              <button
+                type="button"
+                onClick={() => setExpandedActiveGroups((prev) => ({ ...prev, [group.key]: !isExpanded }))}
+                className="flex w-full items-center justify-between gap-2 text-left"
+              >
                 <div>
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${statusColor(sale.status)}`} />
-                    <p className="text-[11px] text-muted">{statusLabel(sale.status)}</p>
-                  </div>
-                  <p className="text-base font-semibold text-text">{sale.clientName}</p>
+                  <p className="text-base font-semibold text-text">{group.clientName}</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-xs text-muted">{sale.clientPhone}</p>
+                    <p className="text-xs text-muted">{group.clientPhone}</p>
                     {whatsapp && (
                       <a
                         href={whatsapp}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300"
-                        title="Открыть WhatsApp"
                         onClick={(event) => event.stopPropagation()}
                       >
                         <MessageCircle size={12} />
@@ -479,24 +529,25 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-muted">{dateFmt(sale.createdAt)}</p>
-              </div>
-
-              <p className="text-sm text-text">{sale.productName}</p>
-              {sale.productId && <p className="text-xs text-muted">Трек: {sale.productId}</p>}
-              <p className="mt-1 text-xs text-muted">
-                Размер: {sale.size || "-"} · Кол-во: {sale.quantity}
-              </p>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border border-line bg-card p-2">
-                  <p className="text-muted">Маржа</p>
-                  <p className="font-semibold text-success">{money(sale.margin)}</p>
+                {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
+              </button>
+              {isExpanded && (
+                <div className="mt-2 space-y-2 border-t border-line pt-2">
+                  {group.sales.map((sale) => {
+                    const revenue = Number(sale.salePrice) * sale.quantity;
+                    return (
+                      <div key={sale.id} className="rounded-xl border border-line bg-card p-2" onClick={() => openSaleDetails(sale)}>
+                        <p className="text-sm text-text">{sale.productName}</p>
+                        <p className="text-xs text-muted">{dateFmt(sale.createdAt)}</p>
+                        <div className="mt-1 grid grid-cols-2 gap-2 text-xs">
+                          <p className="text-muted">Маржа: <span className="text-success">{money(sale.margin)}</span></p>
+                          <p className="text-muted">Выручка: <span className="text-text">{money(revenue)}</span></p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="rounded-lg border border-line bg-card p-2">
-                  <p className="text-muted">Выручка</p>
-                  <p className="text-text">{money(revenue)}</p>
-                </div>
-              </div>
+              )}
             </article>
           );
         })}
@@ -653,7 +704,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             ) : (
               <div className="space-y-3">
                 {archiveGroups.map((group) => {
-                  const isExpanded = expandedArchiveGroups[group.key] ?? true;
+                  const isExpanded = expandedArchiveGroups[group.key] ?? false;
                   const wa = waLink(group.clientPhone);
 
                   return (
