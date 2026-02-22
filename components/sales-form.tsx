@@ -3,7 +3,7 @@
 import { type SyntheticEvent, useMemo, useRef, useState, useTransition } from "react";
 import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { FileImage, Loader2, Pencil, Plus, Upload, X } from "lucide-react";
+import { ChevronDown, FileImage, Loader2, Pencil, Plus, Upload, X } from "lucide-react";
 import { createSaleAction, updateSaleAction } from "@/app/actions";
 
 type SaleRow = {
@@ -32,22 +32,30 @@ type FormLineItem = {
   quantity: string;
   costPriceCny: string;
   salePrice: string;
+  screenshotData: string;
 };
+
+type SaleDraft = {
+  orderDate: string;
+  paymentDate: string;
+  paidTo: string;
+  clientName: string;
+  clientPhone: string;
+  status: "DONE" | "TODO";
+  lineItems: FormLineItem[];
+};
+
+type CropPixels = { x: number; y: number; width: number; height: number };
 
 const CNY_TO_KZT = 80;
 const MAX_IMAGE_BYTES = 1_100_000;
-const SALE_DRAFT_KEY = "salestraking:new-sale-draft:v1";
+const SALE_DRAFT_KEY = "salestraking:new-sale-draft:v2";
 
 const inputClass =
   "h-11 w-full rounded-xl border border-line bg-card px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
 
-function Label({ text, required }: { text: string; required?: boolean }) {
-  return (
-    <p className="mb-1.5 text-sm font-semibold text-text">
-      {text}
-      {required && <span className="ml-1 text-red-400">*</span>}
-    </p>
-  );
+function Label({ text }: { text: string }) {
+  return <p className="mb-1.5 text-sm font-semibold text-text">{text}</p>;
 }
 
 function money(value: number) {
@@ -57,7 +65,7 @@ function money(value: number) {
   const base = Math.floor(abs);
   const frac = abs - base;
   const rounded = frac > 0.5 ? base + 1 : base;
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(sign * rounded) + " ₸";
+  return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(sign * rounded)} ₸`;
 }
 
 function parseFlexibleNumber(value: string) {
@@ -73,68 +81,6 @@ function toDateInputValue(value?: string | null) {
   return date.toISOString().slice(0, 10);
 }
 
-type SaleDraft = {
-  orderDate: string;
-  paymentDate: string;
-  paidTo: string;
-  clientName: string;
-  clientPhone: string;
-  productName: string;
-  productId: string;
-  productLink: string;
-  size: string;
-  quantity: string;
-  costPriceCny: string;
-  salePrice: string;
-  status: "DONE" | "TODO";
-  screenshotData: string;
-  lineItems: FormLineItem[];
-};
-
-function emptyLineItem(): FormLineItem {
-  return {
-    productName: "",
-    productId: "",
-    productLink: "",
-    size: "",
-    quantity: "1",
-    costPriceCny: "",
-    salePrice: ""
-  };
-}
-
-function emptyDraft(): SaleDraft {
-  return {
-    orderDate: "",
-    paymentDate: "",
-    paidTo: "",
-    clientName: "",
-    clientPhone: "",
-    productName: "",
-    productId: "",
-    productLink: "",
-    size: "",
-    quantity: "1",
-    costPriceCny: "",
-    salePrice: "",
-    status: "TODO",
-    screenshotData: "",
-    lineItems: [emptyLineItem()]
-  };
-}
-
-function loadDraft(): SaleDraft {
-  if (typeof window === "undefined") return emptyDraft();
-  try {
-    const raw = window.localStorage.getItem(SALE_DRAFT_KEY);
-    if (!raw) return emptyDraft();
-    const parsed = JSON.parse(raw) as Partial<SaleDraft>;
-    return { ...emptyDraft(), ...parsed };
-  } catch {
-    return emptyDraft();
-  }
-}
-
 function estimateDataUrlBytes(dataUrl: string) {
   const base64 = dataUrl.split(",")[1] ?? "";
   return Math.ceil((base64.length * 3) / 4);
@@ -148,8 +94,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     image.src = src;
   });
 }
-
-type CropPixels = { x: number; y: number; width: number; height: number };
 
 function shrinkCanvas(source: HTMLCanvasElement, scale: number) {
   const canvas = document.createElement("canvas");
@@ -206,6 +150,216 @@ async function getCroppedDataUrl(imageSrc: string, cropPixels: CropPixels, rende
   return encodeCanvasToTargetSize(canvas, MAX_IMAGE_BYTES);
 }
 
+function emptyLineItem(): FormLineItem {
+  return {
+    productName: "",
+    productId: "",
+    productLink: "",
+    size: "",
+    quantity: "1",
+    costPriceCny: "",
+    salePrice: "",
+    screenshotData: ""
+  };
+}
+
+function emptyDraft(): SaleDraft {
+  return {
+    orderDate: "",
+    paymentDate: "",
+    paidTo: "",
+    clientName: "",
+    clientPhone: "",
+    status: "TODO",
+    lineItems: [emptyLineItem()]
+  };
+}
+
+function normalizeDraft(raw: Partial<SaleDraft>): SaleDraft {
+  return {
+    orderDate: raw.orderDate ?? "",
+    paymentDate: raw.paymentDate ?? "",
+    paidTo: raw.paidTo ?? "",
+    clientName: raw.clientName ?? "",
+    clientPhone: raw.clientPhone ?? "",
+    status: raw.status === "DONE" ? "DONE" : "TODO",
+    lineItems: Array.isArray(raw.lineItems) && raw.lineItems.length > 0 ? raw.lineItems.map((item) => ({ ...emptyLineItem(), ...item })) : [emptyLineItem()]
+  };
+}
+
+function loadDraft(): SaleDraft {
+  if (typeof window === "undefined") return emptyDraft();
+  try {
+    const raw = window.localStorage.getItem(SALE_DRAFT_KEY);
+    if (!raw) return emptyDraft();
+    return normalizeDraft(JSON.parse(raw) as Partial<SaleDraft>);
+  } catch {
+    return emptyDraft();
+  }
+}
+
+function ItemEditor({
+  item,
+  index,
+  expanded,
+  removable,
+  onToggle,
+  onRemove,
+  onChange,
+  onSelectScreenshot,
+  onEditScreenshot
+}: {
+  item: FormLineItem;
+  index: number;
+  expanded: boolean;
+  removable: boolean;
+  onToggle: () => void;
+  onRemove: () => void;
+  onChange: (patch: Partial<FormLineItem>) => void;
+  onSelectScreenshot: (index: number) => void;
+  onEditScreenshot: (index: number) => void;
+}) {
+  const qty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
+  const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT * qty;
+  const margin = (parseFlexibleNumber(item.salePrice) * qty - costKzt) * 0.95;
+
+  return (
+    <div className="rounded-2xl border border-line bg-card">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+      >
+        <div>
+          <p className="text-sm font-semibold text-text">Товар #{index + 1}</p>
+          <p className="text-xs text-muted">{item.productName || "Без названия"}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-success">{money(margin)}</span>
+          <ChevronDown size={16} className={`text-muted transition ${expanded ? "rotate-180" : "rotate-0"}`} />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="space-y-3 border-t border-line px-3 pb-3 pt-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div>
+              <Label text="Название товара" />
+              <input
+                className={inputClass}
+                placeholder="Название товара"
+                value={item.productName}
+                onChange={(e) => onChange({ productName: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label text="Трек-код" />
+              <input
+                className={inputClass}
+                placeholder="TRK123456"
+                value={item.productId}
+                onChange={(e) => onChange({ productId: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div>
+              <Label text="Ссылка" />
+              <input
+                className={inputClass}
+                placeholder="https://..."
+                value={item.productLink}
+                onChange={(e) => onChange({ productLink: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label text="Размер" />
+              <input
+                className={inputClass}
+                placeholder="M, L, 42"
+                value={item.size}
+                onChange={(e) => onChange({ size: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div>
+              <Label text="Количество" />
+              <input
+                className={inputClass}
+                type="number"
+                min={1}
+                value={item.quantity}
+                onChange={(e) => onChange({ quantity: String(Math.max(1, Number(e.target.value || 1))) })}
+              />
+            </div>
+            <div>
+              <Label text="Цена (¥)" />
+              <input
+                className={inputClass}
+                placeholder="19.5"
+                inputMode="decimal"
+                value={item.costPriceCny}
+                onChange={(e) => onChange({ costPriceCny: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label text="Цена продажи" />
+              <input
+                className={inputClass}
+                placeholder="0"
+                inputMode="decimal"
+                value={item.salePrice}
+                onChange={(e) => onChange({ salePrice: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label text="Скрин товара" />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSelectScreenshot(index)}
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
+              >
+                <Upload size={14} />
+                Загрузить
+              </button>
+              {item.screenshotData && (
+                <button
+                  type="button"
+                  onClick={() => onEditScreenshot(index)}
+                  className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
+                >
+                  <Pencil size={14} />
+                  Обрезать
+                </button>
+              )}
+              {removable && (
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="inline-flex h-9 items-center rounded-xl border border-red-500/40 px-3 text-sm text-red-300 transition hover:bg-red-500/10"
+                >
+                  Удалить товар
+                </button>
+              )}
+            </div>
+            {item.screenshotData && (
+              <div className="mt-2 overflow-hidden rounded-xl border border-line">
+                <img src={item.screenshotData} alt="Скрин товара" className="max-h-44 w-full object-contain bg-bg" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SalesForm({
   sale,
   compact,
@@ -218,22 +372,38 @@ export function SalesForm({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [draft, setDraft] = useState<SaleDraft>(emptyDraft());
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadTargetIndex, setUploadTargetIndex] = useState<number | null>(null);
+
+  const [orderDate, setOrderDate] = useState<string>(sale ? toDateInputValue(sale.orderDate) : "");
+  const [paymentDate, setPaymentDate] = useState<string>(sale ? toDateInputValue(sale.paymentDate) : "");
+  const [paidTo, setPaidTo] = useState<string>(sale?.paidTo ?? "");
+  const [clientName, setClientName] = useState<string>(sale?.clientName ?? "");
   const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "");
-  const [productNameInput, setProductNameInput] = useState<string>(sale?.productName ?? "");
-  const [productIdInput, setProductIdInput] = useState<string>(sale?.productId ?? "");
-  const [productLinkInput, setProductLinkInput] = useState<string>(sale?.productLink ?? "");
-  const [sizeInput, setSizeInput] = useState<string>(sale?.size ?? "");
-  const [quantity, setQuantity] = useState<number>(sale?.quantity ?? 1);
-  const [costPriceCnyInput, setCostPriceCnyInput] = useState<string>(sale?.costPriceCny ?? "");
-  const [salePriceInput, setSalePriceInput] = useState<string>(sale?.salePrice ?? "");
-  const [extraItems, setExtraItems] = useState<FormLineItem[]>([]);
-  const [screenshotData, setScreenshotData] = useState<string>(sale?.screenshotData ?? "");
-  const [screenshotChanged, setScreenshotChanged] = useState(false);
+
+  const [lineItems, setLineItems] = useState<FormLineItem[]>(
+    sale
+      ? [
+          {
+            productName: sale.productName ?? "",
+            productId: sale.productId ?? "",
+            productLink: sale.productLink ?? "",
+            size: sale.size ?? "",
+            quantity: String(sale.quantity || 1),
+            costPriceCny: sale.costPriceCny ?? "",
+            salePrice: sale.salePrice ?? "",
+            screenshotData: sale.screenshotData ?? ""
+          }
+        ]
+      : [emptyLineItem()]
+  );
+
   const [status, setStatus] = useState<"DONE" | "TODO">(sale?.status === "DONE" ? "DONE" : "TODO");
+  const [expandedItems, setExpandedItems] = useState<number[]>([0]);
+
   const [cropSource, setCropSource] = useState<string>("");
+  const [cropTargetIndex, setCropTargetIndex] = useState<number | null>(null);
   const cropImageRef = useRef<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Crop>({
     unit: "%",
@@ -245,108 +415,45 @@ export function SalesForm({
   const [cropPixels, setCropPixels] = useState<PixelCrop | null>(null);
   const [cropPending, setCropPending] = useState(false);
 
-  const costPriceCny = useMemo(() => parseFlexibleNumber(costPriceCnyInput), [costPriceCnyInput]);
-  const salePrice = useMemo(() => parseFlexibleNumber(salePriceInput), [salePriceInput]);
-  const lineItemsForCreate = useMemo(
-    () => [
-      {
-        productName: productNameInput,
-        productId: productIdInput,
-        productLink: productLinkInput,
-        size: sizeInput,
-        quantity: String(quantity),
-        costPriceCny: costPriceCnyInput,
-        salePrice: salePriceInput
-      },
-      ...extraItems
-    ],
-    [costPriceCnyInput, extraItems, productIdInput, productLinkInput, productNameInput, quantity, salePriceInput, sizeInput]
-  );
-
   const totals = useMemo(() => {
-    const costKzt = lineItemsForCreate.reduce((sum, item) => {
+    const costKzt = lineItems.reduce((sum, item) => {
       const itemQty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
       const itemCostKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
       return sum + itemCostKzt * itemQty;
     }, 0);
 
-    const saleKzt = lineItemsForCreate.reduce((sum, item) => {
+    const saleKzt = lineItems.reduce((sum, item) => {
       const itemQty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
       const itemSale = parseFlexibleNumber(item.salePrice);
       return sum + itemSale * itemQty;
     }, 0);
 
-    const marginRaw = saleKzt - costKzt;
     return {
       costKzt,
-      marginRaw,
-      marginWithFee: marginRaw * 0.95
+      marginWithFee: (saleKzt - costKzt) * 0.95
     };
-  }, [lineItemsForCreate]);
+  }, [lineItems]);
 
   const persistDraft = (patch: Partial<SaleDraft>) => {
     if (sale || typeof window === "undefined") return;
-    setDraft((prev) => {
-      const next = { ...prev, ...patch };
-      try {
-        window.localStorage.setItem(SALE_DRAFT_KEY, JSON.stringify(next));
-      } catch {
-        // Ignore storage errors (private mode/quota), do not break UI.
-      }
+    const current = loadDraft();
+    const next = normalizeDraft({ ...current, ...patch });
+    try {
+      window.localStorage.setItem(SALE_DRAFT_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+
+  const setLineItemPatch = (index: number, patch: Partial<FormLineItem>) => {
+    setLineItems((prev) => {
+      const next = prev.map((item, i) => (i === index ? { ...item, ...patch } : item));
+      persistDraft({ lineItems: next });
       return next;
     });
   };
 
-  const persistCurrentLineItems = (
-    nextExtras: FormLineItem[] = extraItems,
-    overrides: Partial<FormLineItem> = {}
-  ) => {
-    const firstItem: FormLineItem = {
-      productName: overrides.productName ?? productNameInput,
-      productId: overrides.productId ?? productIdInput,
-      productLink: overrides.productLink ?? productLinkInput,
-      size: overrides.size ?? sizeInput,
-      quantity: overrides.quantity ?? String(quantity),
-      costPriceCny: overrides.costPriceCny ?? costPriceCnyInput,
-      salePrice: overrides.salePrice ?? salePriceInput
-    };
-    persistDraft({ lineItems: [firstItem, ...nextExtras] });
-  };
-
-  const applyCroppedImage = async () => {
-    if (!cropSource) return;
-    setCropPending(true);
-    try {
-      const img = cropImageRef.current;
-      const effectiveCrop =
-        cropPixels && cropPixels.width > 0 && cropPixels.height > 0
-          ? cropPixels
-          : img
-            ? { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }
-            : null;
-      if (!effectiveCrop) {
-        setError("Не удалось определить область обрезки");
-        return;
-      }
-
-      const nextImage = await getCroppedDataUrl(cropSource, effectiveCrop, cropImageRef.current);
-      if (estimateDataUrlBytes(nextImage) > MAX_IMAGE_BYTES) {
-        setError("Файл после обрезки всё ещё большой. Обрежьте сильнее.");
-        return;
-      }
-      setScreenshotData(nextImage);
-      setScreenshotChanged(true);
-      persistDraft({ screenshotData: nextImage });
-      setCropSource("");
-      setError(null);
-    } catch {
-      setError("Не удалось обрезать изображение");
-    } finally {
-      setCropPending(false);
-    }
-  };
-
-  const handleFile = (file: File) => {
+  const handleFile = (file: File, index: number) => {
     if (!file.type.startsWith("image/")) {
       setError("Можно загружать только изображения");
       return;
@@ -357,6 +464,7 @@ export function SalesForm({
       const result = String(reader.result ?? "");
       if (!result) return;
       setCropSource(result);
+      setCropTargetIndex(index);
       setCrop({
         unit: "%",
         x: 10,
@@ -370,41 +478,139 @@ export function SalesForm({
     reader.readAsDataURL(file);
   };
 
+  const applyCroppedImage = async () => {
+    if (!cropSource || cropTargetIndex === null) return;
+    setCropPending(true);
+    try {
+      const img = cropImageRef.current;
+      const effectiveCrop =
+        cropPixels && cropPixels.width > 0 && cropPixels.height > 0
+          ? cropPixels
+          : img
+            ? { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }
+            : null;
+
+      if (!effectiveCrop) {
+        setError("Не удалось определить область обрезки");
+        return;
+      }
+
+      const nextImage = await getCroppedDataUrl(cropSource, effectiveCrop, cropImageRef.current);
+      if (estimateDataUrlBytes(nextImage) > MAX_IMAGE_BYTES) {
+        setError("Файл после обрезки всё ещё большой. Обрежьте сильнее.");
+        return;
+      }
+
+      setLineItems((prev) => {
+        const next = prev.map((item, i) => (i === cropTargetIndex ? { ...item, screenshotData: nextImage } : item));
+        persistDraft({ lineItems: next });
+        return next;
+      });
+      setCropSource("");
+      setCropTargetIndex(null);
+      setError(null);
+    } catch {
+      setError("Не удалось обрезать изображение");
+    } finally {
+      setCropPending(false);
+    }
+  };
+
+  const handleOpen = () => {
+    setError(null);
+    if (!sale) {
+      const draft = loadDraft();
+      const merged = normalizeDraft({
+        ...draft,
+        clientName: draft.clientName || initialClient?.clientName || "",
+        clientPhone: draft.clientPhone || initialClient?.clientPhone || ""
+      });
+      setOrderDate(merged.orderDate);
+      setPaymentDate(merged.paymentDate);
+      setPaidTo(merged.paidTo);
+      setClientName(merged.clientName);
+      setClientPhone(merged.clientPhone);
+      setStatus(merged.status);
+      setLineItems(merged.lineItems);
+      setExpandedItems([0]);
+    }
+    setOpen(true);
+  };
+
+  const handleSubmit = (formData: FormData) => {
+    setError(null);
+    startTransition(async () => {
+      let result: { ok: boolean; error?: string };
+
+      if (sale) {
+        const first = lineItems[0] ?? emptyLineItem();
+        formData.set("id", sale.id);
+        formData.set("productName", first.productName);
+        formData.set("productId", first.productId);
+        formData.set("productLink", first.productLink);
+        formData.set("size", first.size);
+        formData.set("quantity", first.quantity);
+        formData.set("costPriceCny", first.costPriceCny);
+        formData.set("salePrice", first.salePrice);
+        formData.set("screenshotData", first.screenshotData || "");
+        result = await updateSaleAction(formData);
+      } else {
+        const normalizedItems = lineItems.map((item) => ({
+          productName: item.productName,
+          productId: item.productId,
+          productLink: item.productLink,
+          size: item.size,
+          quantity: item.quantity,
+          costPriceCny: item.costPriceCny,
+          salePrice: item.salePrice,
+          screenshotData: item.screenshotData
+        }));
+        formData.set("lineItems", JSON.stringify(normalizedItems));
+        formData.set("screenshotData", "");
+        result = await createSaleAction(formData);
+      }
+
+      if (!result.ok) {
+        setError(result.error ?? "Ошибка сохранения");
+        return;
+      }
+
+      if (!sale && typeof window !== "undefined") {
+        try {
+          window.localStorage.removeItem(SALE_DRAFT_KEY);
+        } catch {
+          // ignore
+        }
+      }
+
+      setOpen(false);
+    });
+  };
+
   const handleCropImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
     cropImageRef.current = event.currentTarget;
+  };
+
+  const addItem = () => {
+    const next = [...lineItems, emptyLineItem()];
+    setLineItems(next);
+    setExpandedItems((prev) => [...prev, next.length - 1]);
+    persistDraft({ lineItems: next });
+  };
+
+  const removeItem = (index: number) => {
+    if (lineItems.length <= 1) return;
+    const next = lineItems.filter((_, i) => i !== index);
+    setLineItems(next);
+    setExpandedItems([0]);
+    persistDraft({ lineItems: next });
   };
 
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          setScreenshotChanged(false);
-          if (!sale) {
-            const draftData = loadDraft();
-            const withPrefill = {
-              ...draftData,
-              clientName: draftData.clientName || initialClient?.clientName || "",
-              clientPhone: draftData.clientPhone || initialClient?.clientPhone || "",
-              lineItems:
-                Array.isArray(draftData.lineItems) && draftData.lineItems.length > 0 ? draftData.lineItems : [emptyLineItem()]
-            };
-            setDraft(withPrefill);
-            setClientPhone(withPrefill.clientPhone);
-            const firstItem = withPrefill.lineItems[0] ?? emptyLineItem();
-            setProductNameInput(firstItem.productName || withPrefill.productName);
-            setProductIdInput(firstItem.productId || withPrefill.productId);
-            setProductLinkInput(firstItem.productLink || withPrefill.productLink);
-            setSizeInput(firstItem.size || withPrefill.size);
-            setExtraItems(withPrefill.lineItems.slice(1));
-            setQuantity(Math.max(1, Number(firstItem.quantity || withPrefill.quantity) || 1));
-            setCostPriceCnyInput(firstItem.costPriceCny || withPrefill.costPriceCny);
-            setSalePriceInput(firstItem.salePrice || withPrefill.salePrice);
-            setScreenshotData(withPrefill.screenshotData);
-            setStatus(withPrefill.status === "DONE" ? "DONE" : "TODO");
-          }
-          setOpen(true);
-        }}
+        onClick={handleOpen}
         className={
           compact
             ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs font-semibold text-text transition hover:border-accent"
@@ -417,12 +623,12 @@ export function SalesForm({
 
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl">
+          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg sm:h-auto sm:max-h-[94vh] sm:max-w-3xl sm:rounded-3xl">
             <div className="p-4 sm:p-6">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold text-text">{sale ? "Редактирование" : "Новый товар"}</h2>
-                  <p className="mt-1 text-sm text-muted">Заполните полную информацию по заказу</p>
+                  <h2 className="text-2xl font-semibold text-text">{sale ? "Редактирование" : "Новая продажа"}</h2>
+                  <p className="mt-1 text-sm text-muted">Клиент и несколько товаров в одном добавлении</p>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
@@ -436,410 +642,140 @@ export function SalesForm({
 
               {error && <div className="mb-4 rounded-xl border border-red-500/40 bg-red-950/30 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-              <form
-                action={(formData) => {
-                  setError(null);
-                  startTransition(async () => {
-                    let result: { ok: boolean; error?: string };
-
-                    if (sale) {
-                      formData.set("id", sale.id);
-                      result = await updateSaleAction(formData);
-                    } else {
-                      const normalizedItems = lineItemsForCreate.map((item) => ({
-                        productName: item.productName,
-                        productId: item.productId,
-                        productLink: item.productLink,
-                        size: item.size,
-                        quantity: item.quantity,
-                        costPriceCny: item.costPriceCny,
-                        salePrice: item.salePrice
-                      }));
-                      formData.set("lineItems", JSON.stringify(normalizedItems));
-                      result = await createSaleAction(formData);
-                    }
-
-                    if (!result.ok) {
-                      setError(result.error ?? "Ошибка сохранения");
-                      return;
-                    }
-
-                    if (!sale && typeof window !== "undefined") {
-                      try {
-                        window.localStorage.removeItem(SALE_DRAFT_KEY);
-                      } catch {
-                        // Ignore storage errors, data already submitted.
-                      }
-                      setDraft(emptyDraft());
-                      setExtraItems([]);
-                    }
-                    setOpen(false);
-                  });
-                }}
-                className="space-y-4"
-              >
-                <input
-                  type="hidden"
-                  name="screenshotData"
-                  value={sale && !screenshotChanged && !screenshotData ? "__KEEP__" : screenshotData}
-                />
+              <form action={handleSubmit} className="space-y-4">
                 <input type="hidden" name="status" value={status} />
 
-                <div>
-                  <Label text="Дата заказа" />
-                  <input
-                    className={inputClass}
-                    type="date"
-                    name="orderDate"
-                    defaultValue={sale ? toDateInputValue(sale.orderDate) : draft.orderDate}
-                    onChange={(e) => persistDraft({ orderDate: e.target.value })}
-                  />
-                </div>
-
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label text="Дата заказа" />
+                    <input
+                      className={inputClass}
+                      type="date"
+                      name="orderDate"
+                      value={orderDate}
+                      onChange={(e) => {
+                        setOrderDate(e.target.value);
+                        persistDraft({ orderDate: e.target.value });
+                      }}
+                    />
+                  </div>
                   <div>
                     <Label text="Дата оплаты" />
                     <input
                       className={inputClass}
                       type="date"
                       name="paymentDate"
-                      defaultValue={sale ? toDateInputValue(sale.paymentDate) : draft.paymentDate}
-                      onChange={(e) => persistDraft({ paymentDate: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label text="Куда оплатили" />
-                    <input
-                      className={inputClass}
-                      placeholder="Kaspi / карта / supplier"
-                      name="paidTo"
-                      defaultValue={sale?.paidTo ?? draft.paidTo}
-                      onChange={(e) => persistDraft({ paidTo: e.target.value })}
+                      value={paymentDate}
+                      onChange={(e) => {
+                        setPaymentDate(e.target.value);
+                        persistDraft({ paymentDate: e.target.value });
+                      }}
                     />
                   </div>
                 </div>
 
-                {!sale && (
-                  <div className="rounded-2xl border border-line bg-card p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <Label text="Дополнительные заказы этого клиента" />
+                <div>
+                  <Label text="Куда оплатили" />
+                  <input
+                    className={inputClass}
+                    placeholder="Kaspi / карта / supplier"
+                    name="paidTo"
+                    value={paidTo}
+                    onChange={(e) => {
+                      setPaidTo(e.target.value);
+                      persistDraft({ paidTo: e.target.value });
+                    }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label text="Имя клиента" />
+                    <input
+                      className={inputClass}
+                      name="clientName"
+                      placeholder="Иван Иванов"
+                      value={clientName}
+                      onChange={(e) => {
+                        setClientName(e.target.value);
+                        persistDraft({ clientName: e.target.value });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label text="Телефон" />
+                    <input
+                      className={inputClass}
+                      name="clientPhone"
+                      placeholder="+7 7771234567"
+                      value={clientPhone}
+                      onChange={(e) => {
+                        setClientPhone(e.target.value);
+                        persistDraft({ clientPhone: e.target.value });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-line bg-bg p-3">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <Label text="Товары клиента" />
+                    {!sale && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const next = [...extraItems, emptyLineItem()];
-                          setExtraItems(next);
-                          persistCurrentLineItems(next);
-                        }}
+                        onClick={addItem}
                         className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
                       >
                         <Plus size={14} />
-                        Добавить заказ
+                        Добавить товар
                       </button>
-                    </div>
-
-                    <div className="space-y-2">
-                      {extraItems.length === 0 && <p className="text-xs text-muted">Пока нет дополнительных заказов.</p>}
-                      {extraItems.map((item, index) => (
-                        <div key={`extra-${index}`} className="rounded-xl border border-line bg-bg p-3">
-                          <div className="mb-2 flex items-center justify-between">
-                            <p className="text-xs font-semibold text-text">Заказ #{index + 2}</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = extraItems.filter((_, i) => i !== index);
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                              className="rounded-lg border border-line px-2 py-1 text-xs text-muted transition hover:border-red-400 hover:text-red-300"
-                            >
-                              Удалить
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <input
-                              className={inputClass}
-                              placeholder="Название товара"
-                              value={item.productName}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, productName: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Трек код"
-                              value={item.productId}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, productId: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Ссылка"
-                              value={item.productLink}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, productLink: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Размер"
-                              value={item.size}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, size: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              type="number"
-                              min={1}
-                              placeholder="Количество"
-                              value={item.quantity}
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, quantity: String(Math.max(1, Number(e.target.value || 1))) };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Цена товара (в юанях)"
-                              value={item.costPriceCny}
-                              inputMode="decimal"
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, costPriceCny: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                            <input
-                              className={inputClass}
-                              placeholder="Цена продажи"
-                              value={item.salePrice}
-                              inputMode="decimal"
-                              onChange={(e) => {
-                                const next = [...extraItems];
-                                next[index] = { ...item, salePrice: e.target.value };
-                                setExtraItems(next);
-                                persistCurrentLineItems(next);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    )}
                   </div>
-                )}
 
-                <div>
-                  <Label text="Имя клиента" />
-                  <input
-                    className={inputClass}
-                    placeholder="Иван Иванов"
-                    name="clientName"
-                    defaultValue={sale?.clientName ?? draft.clientName}
-                  onChange={(e) => persistDraft({ clientName: e.target.value })}
-                />
-                </div>
-
-                <div>
-                  <Label text="Телефон" />
-                  <input
-                    className={inputClass}
-                    placeholder="+7 7771234567 или 87771234567"
-                    name="clientPhone"
-                    value={clientPhone}
-                    onChange={(e) => {
-                      setClientPhone(e.target.value);
-                      persistDraft({ clientPhone: e.target.value });
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <Label text="Товар" />
-                  <input
-                    className={inputClass}
-                    placeholder="Название товара"
-                    name="productName"
-                    value={productNameInput}
-                    onChange={(e) => {
-                      setProductNameInput(e.target.value);
-                      persistDraft({ productName: e.target.value });
-                      persistCurrentLineItems(extraItems, { productName: e.target.value });
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <Label text="Трек код товара" />
-                  <input
-                    className={inputClass}
-                    placeholder="TRK123456789"
-                    name="productId"
-                    value={productIdInput}
-                    onChange={(e) => {
-                      setProductIdInput(e.target.value);
-                      persistDraft({ productId: e.target.value });
-                      persistCurrentLineItems(extraItems, { productId: e.target.value });
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <Label text="Ссылка на товар" />
-                  <input
-                    className={inputClass}
-                    placeholder="https://..."
-                    name="productLink"
-                    value={productLinkInput}
-                    onChange={(e) => {
-                      setProductLinkInput(e.target.value);
-                      persistDraft({ productLink: e.target.value });
-                      persistCurrentLineItems(extraItems, { productLink: e.target.value });
-                    }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label text="Размер" />
-                    <input
-                      className={inputClass}
-                      placeholder="M, L, 42..."
-                      name="size"
-                      value={sizeInput}
-                      onChange={(e) => {
-                        setSizeInput(e.target.value);
-                        persistDraft({ size: e.target.value });
-                        persistCurrentLineItems(extraItems, { size: e.target.value });
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label text="Количество" />
-                    <input
-                      className={inputClass}
-                      placeholder="1"
-                      name="quantity"
-                      type="number"
-                      min={1}
-                      defaultValue={sale?.quantity ?? draft.quantity}
-                      onChange={(e) => {
-                        const nextQty = Math.max(1, Number(e.target.value || 1));
-                        setQuantity(nextQty);
-                        persistDraft({ quantity: String(nextQty) });
-                        persistCurrentLineItems(extraItems, { quantity: String(nextQty) });
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label text="Цена товара (в юанях)" />
-                    <input
-                      className={inputClass}
-                      placeholder="Например: 19.5 или 19,5"
-                      name="costPriceCny"
-                      inputMode="decimal"
-                      value={costPriceCnyInput}
-                      onChange={(e) => {
-                        setCostPriceCnyInput(e.target.value);
-                        persistDraft({ costPriceCny: e.target.value });
-                        persistCurrentLineItems(extraItems, { costPriceCny: e.target.value });
-                      }}
-                    />
-                    <p className="mt-1 text-xs text-muted">Конвертация: 1 ¥ = 80 ₸.</p>
-                  </div>
-                  <div>
-                    <Label text="Цена продажи" />
-                    <input
-                      className={inputClass}
-                      placeholder="0"
-                      name="salePrice"
-                      inputMode="decimal"
-                      value={salePriceInput}
-                      onChange={(e) => {
-                        setSalePriceInput(e.target.value);
-                        persistDraft({ salePrice: e.target.value });
-                        persistCurrentLineItems(extraItems, { salePrice: e.target.value });
-                      }}
-                    />
-                    <p className="mt-1 text-xs text-muted">Это цена, которую платит клиент</p>
-                  </div>
-                </div>
-
-                <div>
-                  <Label text="Скрин товара (drag and drop)" />
-                  <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) handleFile(file);
-                    }}
-                    className="rounded-2xl border border-dashed border-line bg-card p-4 text-center"
-                  >
-                    <FileImage className="mx-auto mb-2 text-muted" size={20} />
-                    <p className="text-sm text-muted">Перетащите скрин сюда или загрузите кнопкой</p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-3 inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
-                    >
-                      <Upload size={14} />
-                      Выбрать файл
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFile(file);
-                        e.currentTarget.value = "";
-                      }}
-                    />
-                  </div>
-                  {screenshotData && (
-                    <>
-                      <div className="mt-2 overflow-hidden rounded-xl border border-line">
-                        <img src={screenshotData} alt="Скрин товара" className="max-h-40 w-full object-contain bg-bg" />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCropSource(screenshotData);
-                          setCrop({
-                            unit: "%",
-                            x: 10,
-                            y: 10,
-                            width: 80,
-                            height: 80
-                          });
+                  <div className="space-y-3">
+                    {lineItems.map((item, index) => (
+                      <ItemEditor
+                        key={`item-${index}`}
+                        item={item}
+                        index={index}
+                        expanded={expandedItems.includes(index)}
+                        removable={!sale && lineItems.length > 1}
+                        onToggle={() => {
+                          setExpandedItems((prev) =>
+                            prev.includes(index) ? prev.filter((itemIndex) => itemIndex !== index) : [...prev, index]
+                          );
                         }}
-                        className="mt-2 inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
-                      >
-                        <Pencil size={14} />
-                        Редактировать скрин
-                      </button>
-                    </>
-                  )}
+                        onRemove={() => removeItem(index)}
+                        onChange={(patch) => setLineItemPatch(index, patch)}
+                        onSelectScreenshot={(targetIndex) => {
+                          setUploadTargetIndex(targetIndex);
+                          fileInputRef.current?.click();
+                        }}
+                        onEditScreenshot={(targetIndex) => {
+                          const src = lineItems[targetIndex]?.screenshotData;
+                          if (!src) return;
+                          setCropSource(src);
+                          setCropTargetIndex(targetIndex);
+                          setCrop({ unit: "%", x: 10, y: 10, width: 80, height: 80 });
+                          setCropPixels(null);
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && uploadTargetIndex !== null) {
+                        handleFile(file, uploadTargetIndex);
+                      }
+                      e.currentTarget.value = "";
+                    }}
+                  />
                 </div>
 
                 <div>
@@ -872,11 +808,6 @@ export function SalesForm({
                   <div className="flex items-center justify-between text-sm text-muted">
                     <span>Сумма товара (₸)</span>
                     <span className="font-semibold text-text">{money(totals.costKzt)}</span>
-                  </div>
-                  <div className="my-2 h-px bg-line" />
-                  <div className="flex items-center justify-between text-sm text-muted">
-                    <span>Маржа до вычета</span>
-                    <span className="font-semibold text-success">{money(totals.marginRaw)}</span>
                   </div>
                   <div className="my-2 h-px bg-line" />
                   <div className="flex items-center justify-between text-base text-text">
@@ -913,11 +844,14 @@ export function SalesForm({
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4">
           <div className="w-full max-w-xl rounded-2xl border border-line bg-bg p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-text">Обрезка скрина</p>
+              <p className="text-sm font-semibold text-text">Обрезка скрина товара</p>
               <button
                 type="button"
                 className="rounded-lg p-1 text-muted transition hover:bg-card hover:text-text"
-                onClick={() => setCropSource("")}
+                onClick={() => {
+                  setCropSource("");
+                  setCropTargetIndex(null);
+                }}
               >
                 <X size={18} />
               </button>
@@ -939,11 +873,14 @@ export function SalesForm({
                 />
               </ReactCrop>
             </div>
-            <p className="mt-3 text-xs text-muted">Потяните за углы/края рамки, чтобы обрезать как в обычном редакторе.</p>
+            <p className="mt-3 text-xs text-muted">Потяните за углы/края рамки, чтобы обрезать изображение товара.</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setCropSource("")}
+                onClick={() => {
+                  setCropSource("");
+                  setCropTargetIndex(null);
+                }}
                 className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
               >
                 Отмена

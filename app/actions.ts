@@ -49,6 +49,7 @@ type SaleLineItem = {
   quantity: number;
   costPriceCny: number;
   salePrice: number;
+  screenshotData: string | null;
 };
 
 function parseLineItems(raw: unknown): SaleLineItem[] {
@@ -62,6 +63,7 @@ function parseLineItems(raw: unknown): SaleLineItem[] {
         const rawProductId = normalizeOptionalString(item.productId);
         const rawProductLink = normalizeOptionalString(item.productLink);
         const rawSize = normalizeOptionalString(item.size);
+        const rawScreenshot = normalizeOptionalString(item.screenshotData);
         const quantity = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
         const costPriceCny = Math.max(0, parseFlexibleNumber(item.costPriceCny));
         const salePrice = Math.max(0, parseFlexibleNumber(item.salePrice));
@@ -73,7 +75,8 @@ function parseLineItems(raw: unknown): SaleLineItem[] {
           quantity,
           costPriceCny,
           salePrice,
-          hasMeaningfulData: Boolean(rawProductName || rawProductId || costPriceCny > 0 || salePrice > 0)
+          screenshotData: rawScreenshot,
+          hasMeaningfulData: Boolean(rawProductName || rawProductId || costPriceCny > 0 || salePrice > 0 || rawScreenshot)
         };
       })
       .filter((item) => item.hasMeaningfulData)
@@ -174,6 +177,11 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     };
 
     if (lineItems.length > 0) {
+      for (const item of lineItems) {
+        if (item.screenshotData && item.screenshotData.length > 1_500_000) {
+          return { ok: false, error: "Скрин одного из товаров слишком большой. Выберите более легкий файл." };
+        }
+      }
       await prisma.$transaction(
         lineItems.map((item) => {
           const costPrice = item.costPriceCny * CNY_TO_KZT;
@@ -181,6 +189,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
           return prisma.sale.create({
             data: {
               ...shared,
+              screenshotData: item.screenshotData || shared.screenshotData,
               productId: item.productId,
               productName: item.productName,
               productLink: item.productLink,
