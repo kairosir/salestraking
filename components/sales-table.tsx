@@ -158,6 +158,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [sort, setSort] = useState<SortMode>("newest");
   const [mobileView, setMobileView] = useState<MobileView>("cards");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [trashTargetSale, setTrashTargetSale] = useState<Sale | null>(null);
   const [screenshotCache, setScreenshotCache] = useState<Record<string, string>>({});
   const [screenshotLoadingId, setScreenshotLoadingId] = useState<string | null>(null);
   const [screenshotError, setScreenshotError] = useState<Record<string, string>>({});
@@ -171,6 +172,21 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
   const [pendingAction, startPendingAction] = useTransition();
   const [markingDone, startMarkingDone] = useTransition();
+
+  const confirmMoveSaleToTrash = () => {
+    if (!trashTargetSale) return;
+    const target = trashTargetSale;
+    startPendingAction(async () => {
+      const fd = new FormData();
+      fd.set("id", target.id);
+      const result = await moveSaleToTrashAction(fd);
+      if (result.ok) {
+        if (selectedSale?.id === target.id) setSelectedSale(null);
+        setTrashTargetSale(null);
+        router.refresh();
+      }
+    });
+  };
 
   const loadScreenshot = async (saleId: string) => {
     setScreenshotLoadingId(saleId);
@@ -492,15 +508,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    if (!window.confirm("Переместить карточку в корзину?")) return;
-                                    startPendingAction(async () => {
-                                      const fd = new FormData();
-                                      fd.set("id", sale.id);
-                                      await moveSaleToTrashAction(fd);
-                                      router.refresh();
-                                    });
-                                  }}
+                                  onClick={() => setTrashTargetSale(sale)}
                                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line text-muted transition hover:border-red-400 hover:text-red-300"
                                 >
                                   <Trash2 size={14} />
@@ -673,18 +681,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <button
                 type="button"
                 disabled={pendingAction}
-                onClick={() => {
-                  if (!window.confirm("Переместить карточку в корзину?")) return;
-                  startPendingAction(async () => {
-                    const fd = new FormData();
-                    fd.set("id", selectedSale.id);
-                    const result = await moveSaleToTrashAction(fd);
-                    if (result.ok) {
-                      setSelectedSale(null);
-                      router.refresh();
-                    }
-                  });
-                }}
+                onClick={() => setTrashTargetSale(selectedSale)}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-400/60 text-sm text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
               >
                 <Trash2 size={14} /> В корзину
@@ -705,6 +702,37 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               >
                 {markingDone && <Loader2 size={14} className="animate-spin" />}
                 {selectedSale.status === "DONE" ? "Выдано ✓" : "Выдано"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {trashTargetSale && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-4">
+            <h4 className="text-base font-semibold text-text">Переместить в корзину?</h4>
+            <p className="mt-2 text-sm text-muted">
+              Товар: <span className="text-text">{trashTargetSale.productName || "-"}</span>
+            </p>
+            <p className="text-sm text-muted">
+              Клиент: <span className="text-text">{trashTargetSale.clientName || "-"}</span>
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTrashTargetSale(null)}
+                className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                disabled={pendingAction}
+                onClick={confirmMoveSaleToTrash}
+                className="h-10 rounded-xl border border-red-400/60 text-sm text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+              >
+                В корзину
               </button>
             </div>
           </div>
