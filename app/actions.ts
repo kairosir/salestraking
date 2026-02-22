@@ -482,6 +482,27 @@ export async function markSaleDoneAction(id: string): Promise<{ ok: boolean; err
   }
 }
 
+export async function restoreArchivedSalesAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const ids = parseIds(formData.get("ids"));
+    if (!ids.length) return { ok: false, error: "Не выбраны записи" };
+
+    await prisma.sale.updateMany({
+      where: { id: { in: ids }, status: "DONE" },
+      data: { status: "TODO", updatedById: session.user.id }
+    });
+
+    revalidateSalesPages();
+    return { ok: true };
+  } catch (error) {
+    console.error("restoreArchivedSalesAction failed:", error);
+    return { ok: false, error: "Не удалось восстановить из архива" };
+  }
+}
+
 export async function addNotificationEmailAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   try {
     const session = await auth();

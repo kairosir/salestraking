@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
+  Archive,
   Check,
   ChevronDown,
   ChevronRight,
@@ -18,6 +19,7 @@ import {
   clearTrashAction,
   markSaleDoneAction,
   moveSaleToTrashAction,
+  restoreArchivedSalesAction,
   restoreSalesFromTrashAction
 } from "@/app/actions";
 import { SalesForm } from "@/components/sales-form";
@@ -215,7 +217,9 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [screenshotLoadingId, setScreenshotLoadingId] = useState<string | null>(null);
   const [screenshotError, setScreenshotError] = useState<Record<string, string>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [selectedArchiveIds, setSelectedArchiveIds] = useState<Record<string, boolean>>({});
   const [selectedTrashIds, setSelectedTrashIds] = useState<Record<string, boolean>>({});
   const [pendingAction, startPendingAction] = useTransition();
   const [markingDone, startMarkingDone] = useTransition();
@@ -258,7 +262,11 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
     return unique;
   }, [sales]);
 
-  const activeSales = useMemo(() => sales.filter((sale) => sale.status !== "WAITING"), [sales]);
+  const activeSales = useMemo(
+    () => sales.filter((sale) => sale.status !== "WAITING" && sale.status !== "DONE"),
+    [sales]
+  );
+  const archiveSales = useMemo(() => sales.filter((sale) => sale.status === "DONE"), [sales]);
   const trashSales = useMemo(() => sales.filter((sale) => sale.status === "WAITING"), [sales]);
 
   const filtered = useMemo(() => {
@@ -290,8 +298,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
     () => trashSales.filter((sale) => selectedTrashIds[sale.id]),
     [trashSales, selectedTrashIds]
   );
+  const selectedArchive = useMemo(
+    () => archiveSales.filter((sale) => selectedArchiveIds[sale.id]),
+    [archiveSales, selectedArchiveIds]
+  );
 
   const trashIdsCsv = selectedTrash.map((s) => s.id).join(",");
+  const archiveIdsCsv = selectedArchive.map((s) => s.id).join(",");
 
   if (!sales.length) {
     return (
@@ -601,7 +614,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                   startMarkingDone(async () => {
                     const result = await markSaleDoneAction(selectedSale.id);
                     if (!result.ok) return;
-                    setSelectedSale((prev) => (prev ? { ...prev, status: "DONE" } : prev));
+                    setSelectedSale(null);
                     router.refresh();
                   });
                 }}
@@ -615,14 +628,106 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setTrashOpen(true)}
-        className="btn-primary fixed bottom-5 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full shadow-glow"
-        title="Корзина"
-      >
-        <Trash2 size={20} />
-      </button>
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setArchiveOpen(true)}
+          className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-line bg-card text-text shadow-glow transition hover:border-accent"
+          title="Архив"
+        >
+          <Archive size={20} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setTrashOpen(true)}
+          className="btn-primary inline-flex h-14 w-14 items-center justify-center rounded-full shadow-glow"
+          title="Корзина"
+        >
+          <Trash2 size={20} />
+        </button>
+      </div>
+
+      {archiveOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
+          <div className="h-[86vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-3xl sm:rounded-3xl sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-text">Архив</h3>
+                <p className="text-sm text-muted">Здесь товары, отмеченные как «Выдано»</p>
+              </div>
+              <button type="button" onClick={() => setArchiveOpen(false)} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
+                <X size={20} />
+              </button>
+            </div>
+
+            {archiveSales.length === 0 ? (
+              <p className="rounded-xl border border-line bg-card p-4 text-sm text-muted">Архив пустой</p>
+            ) : (
+              <div className="space-y-2">
+                {archiveSales.map((sale) => {
+                  const checked = Boolean(selectedArchiveIds[sale.id]);
+                  return (
+                    <label key={sale.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-card p-3">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) =>
+                          setSelectedArchiveIds((prev) => ({
+                            ...prev,
+                            [sale.id]: e.target.checked
+                          }))
+                        }
+                        className="mt-1"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-text">{sale.clientName} · {sale.productName}</p>
+                        <p className="text-xs text-muted">{sale.clientPhone} · {dateFmt(sale.createdAt)}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="mt-4 grid grid-cols-1 gap-2 border-t border-line pt-4 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={pendingAction || !selectedArchive.length}
+                onClick={() => {
+                  startPendingAction(async () => {
+                    const fd = new FormData();
+                    fd.set("ids", archiveIdsCsv);
+                    await restoreArchivedSalesAction(fd);
+                    setSelectedArchiveIds({});
+                    router.refresh();
+                  });
+                }}
+                className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent disabled:opacity-60"
+              >
+                Восстановить выбранные
+              </button>
+
+              <button
+                type="button"
+                disabled={pendingAction || archiveSales.length === 0}
+                onClick={() => {
+                  startPendingAction(async () => {
+                    const allIds = archiveSales.map((s) => s.id).join(",");
+                    const fd = new FormData();
+                    fd.set("ids", allIds);
+                    await restoreArchivedSalesAction(fd);
+                    setSelectedArchiveIds({});
+                    router.refresh();
+                  });
+                }}
+                className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent disabled:opacity-60"
+              >
+                Восстановить все
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {trashOpen && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
