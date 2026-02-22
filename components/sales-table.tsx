@@ -796,7 +796,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         </div>
       )}
 
-      <div className="fixed bottom-5 right-5 z-40 flex flex-col gap-2">
+      <div className="fixed bottom-24 right-5 z-40 flex flex-col gap-2 sm:bottom-5">
         <button
           type="button"
           onClick={() => setArchiveOpen(true)}

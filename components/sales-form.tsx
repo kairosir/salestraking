@@ -364,11 +364,13 @@ export function SalesForm({
   sale,
   compact,
   compactVariant = "default",
+  iconOnly,
   initialClient
 }: {
   sale?: SaleRow;
   compact?: boolean;
   compactVariant?: "default" | "plus";
+  iconOnly?: boolean;
   initialClient?: { clientName?: string; clientPhone?: string };
 }) {
   const [open, setOpen] = useState(false);
@@ -616,7 +618,9 @@ export function SalesForm({
         className={
           compact
             ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs font-semibold text-text transition hover:border-accent"
-            : "btn-primary inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-glow transition"
+            : iconOnly
+              ? "btn-primary inline-flex h-14 w-14 items-center justify-center rounded-full shadow-glow transition"
+              : "btn-primary inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-glow transition"
         }
       >
         {sale ? <Pencil size={14} /> : <Plus size={16} />}
@@ -626,6 +630,8 @@ export function SalesForm({
             : compactVariant === "plus"
               ? ""
               : "Добав"
+          : iconOnly
+            ? ""
           : sale
             ? "Изменить"
             : "Добавить"}
