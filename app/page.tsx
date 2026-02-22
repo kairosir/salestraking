@@ -123,14 +123,11 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:mt-4 sm:gap-3 md:grid-cols-4">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:mt-4 sm:gap-3 md:grid-cols-5">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
             <StatCard icon={<DollarSign size={18} />} label="Выручка" value={money(totals.revenue)} />
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
             <CalculationCard totalNetMargin={totalNetMargin} sales={sales.map((s) => ({ createdAt: s.createdAt.toISOString(), margin: Number(s.margin) }))} />
-          </div>
-
-          <div className="mt-3">
             <ScriptsBoard
               scripts={scripts.map((item) => ({
                 id: item.id,

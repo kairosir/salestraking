@@ -162,38 +162,51 @@ export default async function AccountPage() {
                     </div>
                   </summary>
 
-                  <div className="mt-3 space-y-2 border-t border-line pt-3">
-                    {group.sales.map((sale) => (
-                      <div key={sale.id} className="rounded-xl border border-line bg-bg p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-semibold text-text">{sale.productName}</p>
-                            <p className="text-xs text-muted">{sale.clientPhone}</p>
-                            <p className="text-xs text-success">Маржа: {money(Number(sale.margin))}</p>
-                          </div>
-                          <SalesForm
-                            compact
-                            sale={{
-                              id: sale.id,
-                              productId: sale.productId,
-                              clientName: sale.clientName,
-                              clientPhone: sale.clientPhone,
-                              productName: sale.productName,
-                              productLink: sale.productLink,
-                              paidTo: sale.paidTo,
-                              orderDate: sale.orderDate ? sale.orderDate.toISOString() : null,
-                              paymentDate: sale.paymentDate ? sale.paymentDate.toISOString() : null,
-                              screenshotData: sale.screenshotData,
-                              size: sale.size,
-                              quantity: sale.quantity,
-                              costPriceCny: sale.costPriceCny.toString(),
-                              salePrice: sale.salePrice.toString(),
-                              status: sale.status === "DONE" ? "DONE" : "TODO"
-                            }}
-                          />
-                        </div>
+                  <div className="mt-3 overflow-x-auto border-t border-line pt-3">
+                    <div className="min-w-[520px]">
+                      <div className="grid grid-cols-[1.2fr_0.5fr_0.8fr_0.8fr_0.7fr] gap-2 border-b border-line px-2 py-1 text-[11px] uppercase tracking-wide text-muted">
+                        <span>Товар</span>
+                        <span>Кол-во</span>
+                        <span>Маржа</span>
+                        <span>Статус</span>
+                        <span className="text-right">Действие</span>
                       </div>
-                    ))}
+                      <div className="divide-y divide-line">
+                        {group.sales.map((sale) => (
+                          <div key={sale.id} className="grid items-center gap-2 px-2 py-2 text-xs lg:grid-cols-[1.2fr_0.5fr_0.8fr_0.8fr_0.7fr]">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-text">{sale.productName}</p>
+                              {sale.productId && <p className="truncate text-[11px] text-muted">Трек: {sale.productId}</p>}
+                            </div>
+                            <span className="text-text">{sale.quantity}</span>
+                            <span className="font-semibold text-success">{money(Number(sale.margin))}</span>
+                            <span className="text-muted">{sale.status === "DONE" ? "Выдано" : "Доделать"}</span>
+                            <div className="flex justify-end">
+                              <SalesForm
+                                compact
+                                sale={{
+                                  id: sale.id,
+                                  productId: sale.productId,
+                                  clientName: sale.clientName,
+                                  clientPhone: sale.clientPhone,
+                                  productName: sale.productName,
+                                  productLink: sale.productLink,
+                                  paidTo: sale.paidTo,
+                                  orderDate: sale.orderDate ? sale.orderDate.toISOString() : null,
+                                  paymentDate: sale.paymentDate ? sale.paymentDate.toISOString() : null,
+                                  screenshotData: sale.screenshotData,
+                                  size: sale.size,
+                                  quantity: sale.quantity,
+                                  costPriceCny: sale.costPriceCny.toString(),
+                                  salePrice: sale.salePrice.toString(),
+                                  status: sale.status === "DONE" ? "DONE" : "TODO"
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </details>
               ))}
