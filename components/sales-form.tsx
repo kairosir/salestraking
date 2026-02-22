@@ -363,10 +363,12 @@ function ItemEditor({
 export function SalesForm({
   sale,
   compact,
+  compactVariant = "default",
   initialClient
 }: {
   sale?: SaleRow;
   compact?: boolean;
+  compactVariant?: "default" | "plus";
   initialClient?: { clientName?: string; clientPhone?: string };
 }) {
   const [open, setOpen] = useState(false);
@@ -618,7 +620,15 @@ export function SalesForm({
         }
       >
         {sale ? <Pencil size={14} /> : <Plus size={16} />}
-        {compact ? (sale ? "Изм" : "Добав") : sale ? "Изменить" : "Добавить"}
+        {compact
+          ? sale
+            ? "Изм"
+            : compactVariant === "plus"
+              ? ""
+              : "Добав"
+          : sale
+            ? "Изменить"
+            : "Добавить"}
       </button>
 
       {open && (

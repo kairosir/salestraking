@@ -419,6 +419,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                         <div onClick={(event) => event.stopPropagation()}>
                           <SalesForm
                             compact
+                            compactVariant="plus"
                             initialClient={{
                               clientName: group.clientName,
                               clientPhone: group.clientPhone === "-" ? "" : group.clientPhone
@@ -545,6 +546,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <div className="mt-2" onClick={(event) => event.stopPropagation()}>
                 <SalesForm
                   compact
+                  compactVariant="plus"
                   initialClient={{
                     clientName: group.clientName,
                     clientPhone: group.clientPhone === "-" ? "" : group.clientPhone
@@ -590,7 +592,22 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <Info label="Трек код товара" value={selectedSale.productId || "-"} />
               <Info label="Товар" value={selectedSale.productName} />
               <Info label="Клиент" value={selectedSale.clientName} />
-              <Info label="Телефон" value={selectedSale.clientPhone} />
+              <div className="rounded-xl border border-line bg-card p-3">
+                <p className="text-xs text-muted">Телефон</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-sm text-text">{selectedSale.clientPhone}</p>
+                  {waLink(selectedSale.clientPhone) && (
+                    <a
+                      href={waLink(selectedSale.clientPhone) ?? "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300"
+                    >
+                      <MessageCircle size={14} />
+                    </a>
+                  )}
+                </div>
+              </div>
               <Info label="Дата заказа" value={onlyDate(selectedSale.orderDate)} />
               <Info label="Дата оплаты" value={onlyDate(selectedSale.paymentDate)} />
               <Info label="Куда оплатили" value={selectedSale.paidTo || "-"} />

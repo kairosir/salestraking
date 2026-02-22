@@ -196,7 +196,7 @@ export async function runTestNotifications(scope: NotificationScope = {}) {
       ...(scope.userId ? { userId: scope.userId } : {})
     }
   });
-  const activeRecipients = recipients.filter((r) => r.telegramEnabled && r.telegramChatId);
+  const activeRecipients = recipients.filter((r) => r.telegramEnabled && r.telegramChatId && r.userId);
 
   let sent = 0;
   let skipped = 0;
@@ -262,6 +262,7 @@ export async function runNotifications(scope: RunNotificationScope = {}) {
     },
     select: {
       id: true,
+      createdById: true,
       clientName: true,
       clientPhone: true,
       productName: true,
@@ -276,12 +277,24 @@ export async function runNotifications(scope: RunNotificationScope = {}) {
   const dayKey = astanaDateKey(now);
   const nowDayIdx = dayIndexInAstana(now);
   const week = weeklyWindow(now);
+  const recipientsByUser = new Map<string, typeof activeRecipients>();
+  for (const recipient of activeRecipients) {
+    if (!recipient.userId) continue;
+    const list = recipientsByUser.get(recipient.userId) ?? [];
+    list.push(recipient);
+    recipientsByUser.set(recipient.userId, list);
+  }
 
   for (const sale of sales) {
     const daysSince = nowDayIdx - dayIndexInAstana(sale.createdAt);
     const shouldSendInTransit = daysSince >= 10 && daysSince <= 13;
+    const ownerRecipients = recipientsByUser.get(sale.createdById) ?? [];
+    if (!ownerRecipients.length) {
+      skipped += 1;
+      continue;
+    }
 
-    for (const recipient of activeRecipients) {
+    for (const recipient of ownerRecipients) {
       const pendingAlready = await wasSent(NotificationKind.PENDING_3H, pendingKey, sale.id, recipient.id);
       if (!pendingAlready) {
         const text = pendingMessage({
@@ -341,52 +354,53 @@ export async function runNotifications(scope: RunNotificationScope = {}) {
 
   const shouldSendWeekly = week.isWeeklySendMoment || Boolean(scope.forceWeekly);
   if (shouldSendWeekly) {
-    const [weeklyAgg, weeklyCount] = await Promise.all([
-      prisma.sale.aggregate({
-        where: {
-          createdAt: {
-            gte: week.startUtc,
-            lte: week.endUtc
-          },
-          ...(scope.userId ? { createdById: scope.userId } : {})
-        },
-        _sum: { margin: true }
-      }),
-      prisma.sale.count({
-        where: {
-          createdAt: {
-            gte: week.startUtc,
-            lte: week.endUtc
-          },
-          ...(scope.userId ? { createdById: scope.userId } : {})
-        }
-      })
-    ]);
-
-    const totalMargin = Number(weeklyAgg._sum.margin ?? 0);
-    const aimShare = totalMargin * 0.4;
-    const dashaShare = totalMargin * 0.6;
-    const summaryText = weeklySummaryMessage({
-      startLabel: formatAstanaPeriodDate(week.monday, "06:00"),
-      endLabel: formatAstanaPeriodDate(week.sunday, "22:00"),
-      totalMargin,
-      aimShare,
-      dashaShare,
-      salesCount: weeklyCount
-    });
-
     for (const recipient of activeRecipients) {
+      if (!recipient.userId) {
+        skipped += 1;
+        continue;
+      }
+      const [weeklyAgg, weeklyCount] = await Promise.all([
+        prisma.sale.aggregate({
+          where: {
+            createdById: recipient.userId,
+            createdAt: {
+              gte: week.startUtc,
+              lte: week.endUtc
+            }
+          },
+          _sum: { margin: true }
+        }),
+        prisma.sale.count({
+          where: {
+            createdById: recipient.userId,
+            createdAt: {
+              gte: week.startUtc,
+              lte: week.endUtc
+            }
+          }
+        })
+      ]);
+
+      const totalMargin = Number(weeklyAgg._sum.margin ?? 0);
+      const aimShare = totalMargin * 0.4;
+      const dashaShare = totalMargin * 0.6;
+      const summaryText = weeklySummaryMessage({
+        startLabel: formatAstanaPeriodDate(week.monday, "06:00"),
+        endLabel: formatAstanaPeriodDate(week.sunday, "22:00"),
+        totalMargin,
+        aimShare,
+        dashaShare,
+        salesCount: weeklyCount
+      });
+
       let delivered = false;
       if (recipient.telegramEnabled && recipient.telegramChatId) {
         const tgResult = await sendTelegramMessage(recipient.telegramChatId, summaryText);
         delivered = delivered || tgResult.ok;
       }
 
-      if (delivered) {
-        sent += 1;
-      } else {
-        skipped += 1;
-      }
+      if (delivered) sent += 1;
+      else skipped += 1;
     }
   }
 
