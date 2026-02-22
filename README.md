@@ -110,3 +110,18 @@ npm run dev
 
 - После каждого `git commit` срабатывает `post-commit` hook и делает `git push`.
 - GitHub Actions workflow `.github/workflows/vercel-deploy.yml` выполняет деплой в Vercel.
+
+## Автобэкап БД
+
+- Workflow: `.github/workflows/db-backup.yml`
+- Частота: каждые 6 часов (cron `15 */6 * * *`) + ручной запуск через `workflow_dispatch`.
+- Источник: `secrets.DATABASE_URL` (в GitHub репозитории).
+- Результат: SQL backup (`.sql.gz`) + checksum (`.sha256`) в GitHub Actions Artifacts (retention 30 дней).
+
+### Восстановление из бэкапа
+
+1. Скачать нужный artifact из вкладки `Actions` → `Database Backup`.
+2. Распаковать:
+   - `gunzip neon-backup_YYYY-MM-DD_HH-MM-SS.sql.gz`
+3. Восстановить в нужную БД:
+   - `psql "$DATABASE_URL" -f neon-backup_YYYY-MM-DD_HH-MM-SS.sql`
