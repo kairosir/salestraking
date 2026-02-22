@@ -197,21 +197,21 @@ function looksArrivedInCountry(status: string | null, substatus: string | null, 
 }
 
 function trackingStatusMessage(input: {
+  saleId: string;
   clientName: string;
   clientPhone: string;
   productName: string;
   trackingNumber: string;
   status: string | null;
-  substatus: string | null;
 }) {
   return [
-    "Обновлен трек-статус товара",
+    "Проверка трек-кода выполнена",
     `Товар: ${input.productName || "-"}`,
     `Клиент: ${input.clientName || "-"}`,
     `Телефон: ${input.clientPhone || "-"}`,
+    `Номер: ${input.saleId}`,
     `Трек: ${input.trackingNumber}`,
-    `Статус: ${input.status || "-"}`,
-    `Подстатус: ${input.substatus || "-"}`
+    `Трек статус: ${input.status || "-"}`
   ].join("\n");
 }
 
@@ -375,20 +375,19 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
         })
       ]);
 
-      if (changed) {
-        updated += 1;
-        const message = trackingStatusMessage({
-          clientName: sale.clientName,
-          clientPhone: sale.clientPhone,
-          productName: sale.productName,
-          trackingNumber,
-          status: info.status,
-          substatus: info.substatus
-        });
-        for (const recipient of recipients) {
-          if (!recipient.telegramChatId) continue;
-          await sendTelegramMessage(recipient.telegramChatId, message);
-        }
+      if (changed) updated += 1;
+
+      const message = trackingStatusMessage({
+        saleId: sale.id,
+        clientName: sale.clientName,
+        clientPhone: sale.clientPhone,
+        productName: sale.productName,
+        trackingNumber,
+        status: info.status
+      });
+      for (const recipient of recipients) {
+        if (!recipient.telegramChatId) continue;
+        await sendTelegramMessage(recipient.telegramChatId, message);
       }
     } catch {
       failed += 1;
