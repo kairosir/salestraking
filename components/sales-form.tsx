@@ -622,7 +622,7 @@ export function SalesForm({
         {sale ? <Pencil size={14} /> : <Plus size={16} />}
         {compact
           ? sale
-            ? "Изм"
+            ? ""
             : compactVariant === "plus"
               ? ""
               : "Добав"
