@@ -160,6 +160,15 @@ function ensure17TrackBusinessSuccess(payload: unknown) {
     const errMsg = first?.message ?? "unknown";
     throw new Error(`17TRACK error ${String(errCode)}: ${String(errMsg)}`);
   }
+
+  const rejected = data?.rejected as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(rejected) && rejected.length > 0) {
+    const first = rejected[0];
+    const err = first?.error as Record<string, unknown> | undefined;
+    const errCode = err?.code ?? "unknown";
+    const errMsg = err?.message ?? "Rejected by 17TRACK";
+    throw new Error(`17TRACK rejected ${String(errCode)}: ${String(errMsg)}`);
+  }
 }
 
 async function registerIfNeeded(apiKey: string, trackingNumber: string, registeredAt: Date | null) {
@@ -172,6 +181,20 @@ async function registerIfNeeded(apiKey: string, trackingNumber: string, register
   } catch {
     return { ok: false, registeredAt: null as Date | null };
   }
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return "Unknown tracking error";
+}
+
+function isNotRegisteredMessage(message: string) {
+  return /does not register|register first|not register/i.test(message);
+}
+
+function toFailureStatus(message: string) {
+  const cleaned = message.replace(/^17TRACK\s*/i, "").trim();
+  return `Ошибка трека: ${cleaned}`.slice(0, 180);
 }
 
 async function getTrackInfo(apiKey: string, trackingNumber: string): Promise<Track17Info> {
@@ -371,10 +394,32 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
     checked += 1;
 
     const anyRegisteredAt = groupedSales.find((item) => item.trackingRegisteredAt)?.trackingRegisteredAt ?? null;
-    const registerResult = await registerIfNeeded(apiKey, trackingNumber, anyRegisteredAt);
+    let registerResult = await registerIfNeeded(apiKey, trackingNumber, anyRegisteredAt);
 
     try {
-      const info = await getTrackInfo(apiKey, trackingNumber);
+      let info: Track17Info | null = null;
+      let failureMessage = "";
+      try {
+        info = await getTrackInfo(apiKey, trackingNumber);
+      } catch (error) {
+        failureMessage = getErrorMessage(error);
+        if (isNotRegisteredMessage(failureMessage)) {
+          registerResult = await registerIfNeeded(apiKey, trackingNumber, null);
+          if (registerResult.ok) {
+            try {
+              info = await getTrackInfo(apiKey, trackingNumber);
+              failureMessage = "";
+            } catch (retryError) {
+              failureMessage = getErrorMessage(retryError);
+            }
+          }
+        }
+      }
+
+      if (!info) {
+        throw new Error(failureMessage || "No tracking info");
+      }
+
       const changed = groupedSales.some(
         (item) =>
           item.trackingNumber !== trackingNumber ||
@@ -434,7 +479,8 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
         if (!recipient.telegramChatId) continue;
         await sendTelegramMessage(recipient.telegramChatId, message);
       }
-    } catch {
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
       failed += 1;
       await prisma.$transaction([
         prisma.sale.updateMany({
@@ -445,8 +491,11 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
           data: {
             trackingNumber,
             trackingProvider: "17TRACK",
+            trackingStatus: toFailureStatus(errorMessage),
+            trackingSubstatus: null,
+            trackingLastEvent: null,
             trackingSyncedAt: now,
-            trackingRegisteredAt: registerResult.registeredAt,
+            trackingRegisteredAt: isNotRegisteredMessage(errorMessage) ? null : registerResult.registeredAt,
             trackingNextCheckAt: addDays(now, recheckDays)
           }
         }),
@@ -454,10 +503,23 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
           data: {
             trackingNumber,
             success: false,
-            error: "17TRACK sync failed"
+            error: errorMessage
           }
         })
       ]);
+
+      const failMessage = trackingStatusMessage({
+        saleId: sale.id,
+        clientName: sale.clientName,
+        clientPhone: sale.clientPhone,
+        productName: sale.productName,
+        trackingNumber,
+        status: toFailureStatus(errorMessage)
+      });
+      for (const recipient of recipients) {
+        if (!recipient.telegramChatId) continue;
+        await sendTelegramMessage(recipient.telegramChatId, failMessage);
+      }
     }
   }
 
