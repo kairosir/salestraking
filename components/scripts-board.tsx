@@ -75,7 +75,7 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-[74px] w-full flex-col rounded-2xl border border-line bg-card/70 bg-panel p-2.5 text-left sm:h-28 sm:p-3.5"
+        className="flex h-[82px] w-full flex-col rounded-2xl border border-line bg-card/70 bg-panel p-2.5 text-left sm:h-28 sm:p-3.5"
       >
         <p className="inline-flex items-center gap-2 text-xs text-muted sm:text-sm">Скрипты</p>
         <p className="mt-1 text-lg font-semibold leading-none text-text sm:mt-3 sm:text-xl">{sorted.length}</p>

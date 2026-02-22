@@ -105,7 +105,7 @@ export default async function Home() {
           <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
               <div className="overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-glow">
-                <Image src="/icon-store.png" alt="Store icon" width={56} height={56} className="h-12 w-12 object-cover sm:h-14 sm:w-14" />
+                <Image src="/icon-store.png" alt="Store icon" width={56} height={56} className="h-12 w-12 rounded-xl object-cover sm:h-14 sm:w-14" />
               </div>
               <div>
                 <p className="text-sm text-muted">Aimuselim Online Store</p>
@@ -181,7 +181,7 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="flex h-[74px] flex-col rounded-2xl border border-line bg-card/70 bg-panel p-2.5 sm:h-28 sm:p-3.5">
+    <div className="flex h-[82px] flex-col rounded-2xl border border-line bg-card/70 bg-panel p-2.5 sm:h-28 sm:p-3.5">
       <p className="inline-flex items-center gap-2 text-xs text-muted sm:text-sm">
         <span>{icon}</span>
         {label}
