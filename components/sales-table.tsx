@@ -579,6 +579,28 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                           <p className="text-muted">Маржа: <span className="text-success">{money(sale.margin)}</span></p>
                           <p className="text-muted">Выручка: <span className="text-text">{money(revenue)}</span></p>
                         </div>
+                        <div className="mt-2 flex justify-end" onClick={(event) => event.stopPropagation()}>
+                          <SalesForm
+                            compact
+                            sale={{
+                              id: sale.id,
+                              productId: sale.productId,
+                              clientName: sale.clientName,
+                              clientPhone: sale.clientPhone,
+                              productName: sale.productName,
+                              productLink: sale.productLink,
+                              paidTo: sale.paidTo,
+                              orderDate: sale.orderDate,
+                              paymentDate: sale.paymentDate,
+                              screenshotData: sale.screenshotData,
+                              size: sale.size,
+                              quantity: sale.quantity,
+                              costPriceCny: sale.costPriceCny,
+                              salePrice: sale.salePrice,
+                              status: sale.status === "DONE" ? "DONE" : "TODO"
+                            }}
+                          />
+                        </div>
                       </div>
                     );
                   })}
