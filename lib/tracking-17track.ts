@@ -25,6 +25,7 @@ type SyncSummary = {
 
 type SaleForTracking = {
   id: string;
+  status: SaleStatus;
   productId: string | null;
   clientName: string;
   clientPhone: string;
@@ -270,10 +271,11 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
           }
         ]
       };
+  const statusFilter = scope.force ? {} : { status: { in: [SaleStatus.TODO, SaleStatus.DONE] } };
 
   const sales = (await prisma.sale.findMany({
     where: {
-      status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
+      ...statusFilter,
       ...(scope.force ? {} : { trackingArrivedAt: null }),
       OR: [{ trackingNumber: { not: null } }, { productId: { not: null } }],
       ...dueFilter,
@@ -283,6 +285,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
     take: limit,
     select: {
       id: true,
+      status: true,
       productId: true,
       clientName: true,
       clientPhone: true,
@@ -365,7 +368,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       await prisma.$transaction([
         prisma.sale.updateMany({
           where: {
-            status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
+            ...(scope.force ? {} : { status: { in: [SaleStatus.TODO, SaleStatus.DONE] } }),
             OR: [{ trackingNumber }, { productId: trackingNumber }]
           },
           data: {
@@ -414,7 +417,7 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       await prisma.$transaction([
         prisma.sale.updateMany({
           where: {
-            status: { in: [SaleStatus.TODO, SaleStatus.DONE] },
+            ...(scope.force ? {} : { status: { in: [SaleStatus.TODO, SaleStatus.DONE] } }),
             OR: [{ trackingNumber }, { productId: trackingNumber }]
           },
           data: {
