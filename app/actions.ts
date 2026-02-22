@@ -33,6 +33,56 @@ function normalizeStatus(value: unknown): SaleStatus {
   return "TODO";
 }
 
+function parseFlexibleNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value !== "string") return 0;
+  const normalized = value.trim().replace(/\s+/g, "").replace(",", ".");
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : 0;
+}
+
+type SaleLineItem = {
+  productName: string;
+  productId: string | null;
+  productLink: string | null;
+  size: string | null;
+  quantity: number;
+  costPriceCny: number;
+  salePrice: number;
+};
+
+function parseLineItems(raw: unknown): SaleLineItem[] {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => {
+        const rawProductName = String(item.productName ?? "").trim();
+        const rawProductId = normalizeOptionalString(item.productId);
+        const rawProductLink = normalizeOptionalString(item.productLink);
+        const rawSize = normalizeOptionalString(item.size);
+        const quantity = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
+        const costPriceCny = Math.max(0, parseFlexibleNumber(item.costPriceCny));
+        const salePrice = Math.max(0, parseFlexibleNumber(item.salePrice));
+        return {
+          productName: rawProductName || "Без товара",
+          productId: rawProductId,
+          productLink: rawProductLink,
+          size: rawSize,
+          quantity,
+          costPriceCny,
+          salePrice,
+          hasMeaningfulData: Boolean(rawProductName || rawProductId || costPriceCny > 0 || salePrice > 0)
+        };
+      })
+      .filter((item) => item.hasMeaningfulData)
+      .map(({ hasMeaningfulData: _skip, ...item }) => item as SaleLineItem);
+  } catch {
+    return [];
+  }
+}
+
 function parseIds(raw: unknown) {
   if (typeof raw !== "string") return [];
   return raw
@@ -98,79 +148,177 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const session = await auth();
     if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
 
-    const parsed = saleSchema.safeParse({
-      productId: formData.get("productId"),
-      clientName: formData.get("clientName"),
-      clientPhone: formData.get("clientPhone"),
-      productName: formData.get("productName"),
-      productLink: formData.get("productLink"),
-      paidTo: formData.get("paidTo"),
-      orderDate: formData.get("orderDate"),
-      paymentDate: formData.get("paymentDate"),
-      screenshotData: formData.get("screenshotData"),
-      size: formData.get("size"),
-      status: formData.get("status"),
-      quantity: formData.get("quantity"),
-      costPriceCny: formData.get("costPriceCny"),
-      salePrice: formData.get("salePrice")
-    });
-
-    if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0]?.message ?? "Ошибка валидации" };
-    }
-
-    const data = parsed.data as Record<string, unknown>;
-
-    const clientName = String(data.clientName ?? "").trim() || "Без имени";
-    const clientPhone = String(data.clientPhone ?? "").trim();
-    const productName = String(data.productName ?? "").trim() || "Без товара";
-    const productId = normalizeOptionalString(data.productId);
-    const productLink = normalizeOptionalString(data.productLink);
-    const paidTo = normalizeOptionalString(data.paidTo);
-    const size = normalizeOptionalString(data.size);
-    const status = normalizeStatus(data.status);
-    const orderDate = parseDate(normalizeOptionalDateString(data.orderDate));
-    const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
-    const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
+    const clientName = String(formData.get("clientName") ?? "").trim() || "Без имени";
+    const clientPhone = String(formData.get("clientPhone") ?? "").trim();
+    const paidTo = normalizeOptionalString(formData.get("paidTo"));
+    const status = normalizeStatus(formData.get("status"));
+    const orderDate = parseDate(normalizeOptionalDateString(formData.get("orderDate")));
+    const paymentDate = parseDate(normalizeOptionalDateString(formData.get("paymentDate")));
+    const screenshotDataRaw = normalizeOptionalString(formData.get("screenshotData")) ?? "";
+    const lineItems = parseLineItems(formData.get("lineItems"));
 
     if (screenshotDataRaw !== "__KEEP__" && screenshotDataRaw.length > 1_500_000) {
       return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
     }
 
-    const costPriceCny = Number(data.costPriceCny);
-    const salePrice = Number(data.salePrice);
-    const quantity = Math.max(1, Number(data.quantity) || 1);
-    const costPrice = costPriceCny * CNY_TO_KZT;
-    const margin = (salePrice - costPrice) * quantity * 0.95;
+    const shared = {
+      clientName,
+      clientPhone,
+      paidTo,
+      orderDate,
+      paymentDate,
+      screenshotData: screenshotDataRaw && screenshotDataRaw !== "__KEEP__" ? screenshotDataRaw : null,
+      status,
+      createdById: session.user.id,
+      updatedById: session.user.id
+    };
 
-    await prisma.sale.create({
-      data: {
-        productId,
+    if (lineItems.length > 0) {
+      await prisma.$transaction(
+        lineItems.map((item) => {
+          const costPrice = item.costPriceCny * CNY_TO_KZT;
+          const margin = (item.salePrice - costPrice) * item.quantity * 0.95;
+          return prisma.sale.create({
+            data: {
+              ...shared,
+              productId: item.productId,
+              productName: item.productName,
+              productLink: item.productLink,
+              size: item.size,
+              quantity: item.quantity,
+              costPriceCny: item.costPriceCny,
+              costPrice,
+              salePrice: item.salePrice,
+              margin
+            }
+          });
+        })
+      );
+    } else {
+      const parsed = saleSchema.safeParse({
+        productId: formData.get("productId"),
         clientName,
         clientPhone,
-        productName,
-        productLink,
+        productName: formData.get("productName"),
+        productLink: formData.get("productLink"),
         paidTo,
-        orderDate,
-        paymentDate,
-        screenshotData: screenshotDataRaw && screenshotDataRaw !== "__KEEP__" ? screenshotDataRaw : null,
-        size,
-        quantity,
-        costPriceCny,
-        costPrice,
-        salePrice,
-        margin,
+        orderDate: formData.get("orderDate"),
+        paymentDate: formData.get("paymentDate"),
+        screenshotData: formData.get("screenshotData"),
+        size: formData.get("size"),
         status,
-        createdById: session.user.id,
-        updatedById: session.user.id
+        quantity: formData.get("quantity"),
+        costPriceCny: formData.get("costPriceCny"),
+        salePrice: formData.get("salePrice")
+      });
+
+      if (!parsed.success) {
+        return { ok: false, error: parsed.error.issues[0]?.message ?? "Ошибка валидации" };
       }
-    });
+
+      const data = parsed.data as Record<string, unknown>;
+      const productName = String(data.productName ?? "").trim() || "Без товара";
+      const productId = normalizeOptionalString(data.productId);
+      const productLink = normalizeOptionalString(data.productLink);
+      const size = normalizeOptionalString(data.size);
+      const costPriceCny = Number(data.costPriceCny);
+      const salePrice = Number(data.salePrice);
+      const quantity = Math.max(1, Number(data.quantity) || 1);
+      const costPrice = costPriceCny * CNY_TO_KZT;
+      const margin = (salePrice - costPrice) * quantity * 0.95;
+
+      await prisma.sale.create({
+        data: {
+          ...shared,
+          productId,
+          productName,
+          productLink,
+          size,
+          quantity,
+          costPriceCny,
+          costPrice,
+          salePrice,
+          margin
+        }
+      });
+    }
 
     revalidateSalesPages();
     return { ok: true };
   } catch (error) {
     console.error("createSaleAction failed:", error);
     return { ok: false, error: "Не удалось создать запись. Попробуйте еще раз." };
+  }
+}
+
+export async function createScriptAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const question = String(formData.get("question") ?? "").trim();
+    const answer = String(formData.get("answer") ?? "").trim();
+    if (!question && !answer) return { ok: false, error: "Заполните вопрос или ответ" };
+
+    await prisma.scriptTemplate.create({
+      data: {
+        question: question || "Без вопроса",
+        answer: answer || "",
+        createdById: session.user.id,
+        updatedById: session.user.id
+      }
+    });
+
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    console.error("createScriptAction failed:", error);
+    return { ok: false, error: "Не удалось добавить скрипт" };
+  }
+}
+
+export async function updateScriptAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { ok: false, error: "Не найден id скрипта" };
+
+    const question = String(formData.get("question") ?? "").trim();
+    const answer = String(formData.get("answer") ?? "").trim();
+
+    await prisma.scriptTemplate.update({
+      where: { id },
+      data: {
+        question: question || "Без вопроса",
+        answer: answer || "",
+        updatedById: session.user.id
+      }
+    });
+
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    console.error("updateScriptAction failed:", error);
+    return { ok: false, error: "Не удалось обновить скрипт" };
+  }
+}
+
+export async function deleteScriptAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { ok: false, error: "Не найден id скрипта" };
+
+    await prisma.scriptTemplate.delete({ where: { id } });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    console.error("deleteScriptAction failed:", error);
+    return { ok: false, error: "Не удалось удалить скрипт" };
   }
 }
 

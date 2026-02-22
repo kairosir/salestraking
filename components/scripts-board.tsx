@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Copy, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createScriptAction, deleteScriptAction, updateScriptAction } from "@/app/actions";
 
 type ScriptItem = {
   id: string;
@@ -10,30 +12,18 @@ type ScriptItem = {
   updatedAt: string;
 };
 
-const STORAGE_KEY = "salestraking:scripts:v1";
-
-function loadScripts(): ScriptItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as ScriptItem[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveScripts(items: ScriptItem[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-export function ScriptsBoard() {
-  const [items, setItems] = useState<ScriptItem[]>(() => loadScripts());
+export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
+  const router = useRouter();
+  const [items, setItems] = useState<ScriptItem[]>(scripts);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const [message, setMessage] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setItems(scripts);
+  }, [scripts]);
 
   const sorted = useMemo(() => [...items].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [items]);
 
@@ -44,21 +34,19 @@ export function ScriptsBoard() {
   };
 
   const upsert = () => {
-    const q = question.trim();
-    const a = answer.trim();
-    if (!q && !a) return;
-
-    const nextItem: ScriptItem = {
-      id: editingId || Math.random().toString(36).slice(2),
-      question: q || "Без вопроса",
-      answer: a || "",
-      updatedAt: new Date().toISOString()
-    };
-
-    const next = editingId ? items.map((item) => (item.id === editingId ? nextItem : item)) : [nextItem, ...items];
-    setItems(next);
-    saveScripts(next);
-    resetForm();
+    startTransition(async () => {
+      setMessage("");
+      const fd = new FormData();
+      fd.set("question", question);
+      fd.set("answer", answer);
+      const result = editingId ? (fd.set("id", editingId), await updateScriptAction(fd)) : await createScriptAction(fd);
+      if (!result.ok) {
+        setMessage(result.error || "Ошибка сохранения");
+        return;
+      }
+      resetForm();
+      router.refresh();
+    });
   };
 
   return (
@@ -90,7 +78,12 @@ export function ScriptsBoard() {
         />
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={upsert} className="btn-primary inline-flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-semibold">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={upsert}
+            className="btn-primary inline-flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-60"
+          >
             {editingId ? <Save size={14} /> : <Plus size={14} />} {editingId ? "Сохранить" : "Добавить"}
           </button>
           {editingId && (
@@ -99,6 +92,7 @@ export function ScriptsBoard() {
             </button>
           )}
         </div>
+        {message && <p className="mt-2 text-xs text-muted">{message}</p>}
       </div>
 
       <div className="mt-3 space-y-2">
@@ -145,11 +139,19 @@ export function ScriptsBoard() {
                 <button
                   type="button"
                   onClick={() => {
-                    const next = items.filter((x) => x.id !== item.id);
-                    setItems(next);
-                    saveScripts(next);
-                    if (editingId === item.id) resetForm();
+                    startTransition(async () => {
+                      const fd = new FormData();
+                      fd.set("id", item.id);
+                      const result = await deleteScriptAction(fd);
+                      if (!result.ok) {
+                        setMessage(result.error || "Не удалось удалить");
+                        return;
+                      }
+                      if (editingId === item.id) resetForm();
+                      router.refresh();
+                    });
                   }}
+                  disabled={pending}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-red-300 hover:border-red-400"
                   title="Удалить"
                 >

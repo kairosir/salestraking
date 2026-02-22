@@ -22,6 +22,8 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   recipients    NotificationRecipient[]
+  createdScripts ScriptTemplate[] @relation("ScriptCreatedBy")
+  updatedScripts ScriptTemplate[] @relation("ScriptUpdatedBy")
 }
 
 model Account {
@@ -123,6 +125,20 @@ model NotificationLog {
   @@unique([kind, windowKey, saleId, recipientId])
   @@index([saleId])
   @@index([recipientId])
+}
+
+model ScriptTemplate {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  createdById String
+  updatedById String
+  createdBy   User     @relation("ScriptCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User     @relation("ScriptUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
 }
 
 enum SaleStatus {

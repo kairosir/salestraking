@@ -43,12 +43,18 @@ export default async function Home() {
         updatedBy: { select: { name: true, email: true, username: true } }
       }
     });
+  const fetchScripts = () =>
+    prisma.scriptTemplate.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 100
+    });
 
   let sales: Awaited<ReturnType<typeof fetchSales>> = [];
+  let scripts: Awaited<ReturnType<typeof fetchScripts>> = [];
   try {
-    sales = await fetchSales();
+    [sales, scripts] = await Promise.all([fetchSales(), fetchScripts()]);
   } catch (error) {
-    console.error("Failed to load sales:", error);
+    console.error("Failed to load home data:", error);
   }
 
   const totals = sales.reduce(
@@ -125,7 +131,14 @@ export default async function Home() {
           </div>
 
           <div className="mt-3">
-            <ScriptsBoard />
+            <ScriptsBoard
+              scripts={scripts.map((item) => ({
+                id: item.id,
+                question: item.question,
+                answer: item.answer,
+                updatedAt: item.updatedAt.toISOString()
+              }))}
+            />
           </div>
         </header>
 
