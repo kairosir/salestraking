@@ -29,8 +29,21 @@ function normalizeOptionalDateString(value: unknown) {
 }
 
 function normalizeStatus(value: unknown): SaleStatus {
-  if (value === "DONE" || value === "TODO" || value === "WAITING") return value;
-  return "WAITING";
+  if (value === "DONE" || value === "TODO") return value;
+  return "TODO";
+}
+
+function parseIds(raw: unknown) {
+  if (typeof raw !== "string") return [];
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function revalidateSalesPages() {
+  revalidatePath("/");
+  revalidatePath("/account");
 }
 
 export async function loginWithCredentials(formData: FormData) {
@@ -153,8 +166,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       }
     });
 
-    revalidatePath("/");
-    revalidatePath("/account");
+    revalidateSalesPages();
     return { ok: true };
   } catch (error) {
     console.error("createSaleAction failed:", error);
@@ -243,8 +255,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       data: updateData
     });
 
-    revalidatePath("/");
-    revalidatePath("/account");
+    revalidateSalesPages();
     return { ok: true };
   } catch (error) {
     console.error("updateSaleAction failed:", error);
@@ -252,16 +263,53 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
   }
 }
 
-export async function deleteSaleAction(formData: FormData) {
+export async function moveSaleToTrashAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
 
   const id = String(formData.get("id") ?? "");
-  if (!id) throw new Error("Не найден id записи");
+  if (!id) return { ok: false, error: "Не найден id записи" };
 
-  await prisma.sale.delete({ where: { id } });
-  revalidatePath("/");
-  revalidatePath("/account");
+  await prisma.sale.update({
+    where: { id },
+    data: {
+      status: "WAITING",
+      updatedById: session.user.id
+    }
+  });
+  revalidateSalesPages();
+  return { ok: true };
+}
+
+export async function restoreSalesFromTrashAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+  const ids = parseIds(formData.get("ids"));
+  if (!ids.length) return { ok: false, error: "Не выбраны записи" };
+
+  await prisma.sale.updateMany({
+    where: { id: { in: ids }, status: "WAITING" },
+    data: { status: "TODO", updatedById: session.user.id }
+  });
+  revalidateSalesPages();
+  return { ok: true };
+}
+
+export async function clearTrashAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+  const ids = parseIds(formData.get("ids"));
+
+  if (!ids.length) {
+    await prisma.sale.deleteMany({ where: { status: "WAITING" } });
+  } else {
+    await prisma.sale.deleteMany({ where: { id: { in: ids }, status: "WAITING" } });
+  }
+
+  revalidateSalesPages();
+  return { ok: true };
 }
 
 export async function markSaleDoneAction(id: string): Promise<{ ok: boolean; error?: string }> {
@@ -278,8 +326,7 @@ export async function markSaleDoneAction(id: string): Promise<{ ok: boolean; err
       }
     });
 
-    revalidatePath("/");
-    revalidatePath("/account");
+    revalidateSalesPages();
     return { ok: true };
   } catch (error) {
     console.error("markSaleDoneAction failed:", error);

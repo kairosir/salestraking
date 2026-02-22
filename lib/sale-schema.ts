@@ -27,7 +27,7 @@ export const saleSchema = z.object({
   paymentDate: optionalDateString,
   screenshotData: z.string().optional().or(z.literal("")),
   size: z.string().trim().optional().or(z.literal("")),
-  status: z.enum(["DONE", "TODO", "WAITING"]).optional().default("WAITING"),
+  status: z.enum(["DONE", "TODO"]).optional().default("TODO"),
   quantity: z.coerce.number().int().min(0).default(1),
   costPriceCny: decimalFromString.refine((v) => v >= 0, "Цена товара (юани) >= 0"),
   salePrice: decimalFromString.refine((v) => v >= 0, "Цена продажи >= 0")

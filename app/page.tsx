@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { SalesForm } from "@/components/sales-form";
 import { SalesTable } from "@/components/sales-table";
 import { CalculationCard } from "@/components/calculation-card";
+import { ScriptsBoard } from "@/components/scripts-board";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { logoutAction } from "@/app/actions";
 
@@ -122,11 +123,15 @@ export default async function Home() {
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
             <CalculationCard totalNetMargin={totalNetMargin} sales={sales.map((s) => ({ createdAt: s.createdAt.toISOString(), margin: Number(s.margin) }))} />
           </div>
+
+          <div className="mt-3">
+            <ScriptsBoard />
+          </div>
         </header>
 
         <SalesTable sales={uiSales} />
 
-        <div className="fixed bottom-5 right-5 z-40">
+        <div className="fixed bottom-5 left-5 z-40">
           <SalesForm />
         </div>
       </div>

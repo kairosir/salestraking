@@ -21,7 +21,7 @@ type SaleRow = {
   quantity: number;
   costPriceCny: string;
   salePrice: string;
-  status: "DONE" | "TODO" | "WAITING";
+  status: "DONE" | "TODO";
 };
 
 const CNY_TO_KZT = 80;
@@ -76,7 +76,7 @@ type SaleDraft = {
   quantity: string;
   costPriceCny: string;
   salePrice: string;
-  status: "DONE" | "TODO" | "WAITING";
+  status: "DONE" | "TODO";
   screenshotData: string;
 };
 
@@ -94,7 +94,7 @@ function emptyDraft(): SaleDraft {
     quantity: "1",
     costPriceCny: "",
     salePrice: "",
-    status: "WAITING",
+    status: "TODO",
     screenshotData: ""
   };
 }
@@ -182,7 +182,15 @@ async function getCroppedDataUrl(imageSrc: string, cropPixels: CropPixels, rende
   return encodeCanvasToTargetSize(canvas, MAX_IMAGE_BYTES);
 }
 
-export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean }) {
+export function SalesForm({
+  sale,
+  compact,
+  initialClient
+}: {
+  sale?: SaleRow;
+  compact?: boolean;
+  initialClient?: { clientName?: string; clientPhone?: string };
+}) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -195,7 +203,7 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
   const [salePriceInput, setSalePriceInput] = useState<string>(sale?.salePrice ?? "");
   const [screenshotData, setScreenshotData] = useState<string>(sale?.screenshotData ?? "");
   const [screenshotChanged, setScreenshotChanged] = useState(false);
-  const [status, setStatus] = useState<"DONE" | "TODO" | "WAITING">(sale?.status ?? "WAITING");
+  const [status, setStatus] = useState<"DONE" | "TODO">(sale?.status === "DONE" ? "DONE" : "TODO");
   const [cropSource, setCropSource] = useState<string>("");
   const cropImageRef = useRef<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Crop>({
@@ -297,13 +305,18 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
           setScreenshotChanged(false);
           if (!sale) {
             const draftData = loadDraft();
-            setDraft(draftData);
-            setClientPhone(draftData.clientPhone);
-            setQuantity(Math.max(1, Number(draftData.quantity) || 1));
-            setCostPriceCnyInput(draftData.costPriceCny);
-            setSalePriceInput(draftData.salePrice);
-            setScreenshotData(draftData.screenshotData);
-            setStatus(draftData.status);
+            const withPrefill = {
+              ...draftData,
+              clientName: draftData.clientName || initialClient?.clientName || "",
+              clientPhone: draftData.clientPhone || initialClient?.clientPhone || ""
+            };
+            setDraft(withPrefill);
+            setClientPhone(withPrefill.clientPhone);
+            setQuantity(Math.max(1, Number(withPrefill.quantity) || 1));
+            setCostPriceCnyInput(withPrefill.costPriceCny);
+            setSalePriceInput(withPrefill.salePrice);
+            setScreenshotData(withPrefill.screenshotData);
+            setStatus(withPrefill.status === "DONE" ? "DONE" : "TODO");
           }
           setOpen(true);
         }}
@@ -417,8 +430,8 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                     placeholder="Иван Иванов"
                     name="clientName"
                     defaultValue={sale?.clientName ?? draft.clientName}
-                    onChange={(e) => persistDraft({ clientName: e.target.value })}
-                  />
+                  onChange={(e) => persistDraft({ clientName: e.target.value })}
+                />
                 </div>
 
                 <div>
@@ -564,15 +577,34 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                     />
                   </div>
                   {screenshotData && (
-                    <div className="mt-2 overflow-hidden rounded-xl border border-line">
-                      <img src={screenshotData} alt="Скрин товара" className="max-h-40 w-full object-contain bg-bg" />
-                    </div>
+                    <>
+                      <div className="mt-2 overflow-hidden rounded-xl border border-line">
+                        <img src={screenshotData} alt="Скрин товара" className="max-h-40 w-full object-contain bg-bg" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCropSource(screenshotData);
+                          setCrop({
+                            unit: "%",
+                            x: 10,
+                            y: 10,
+                            width: 80,
+                            height: 80
+                          });
+                        }}
+                        className="mt-2 inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
+                      >
+                        <Pencil size={14} />
+                        Редактировать скрин
+                      </button>
+                    </>
                   )}
                 </div>
 
                 <div>
                   <Label text="Статус" />
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -592,16 +624,6 @@ export function SalesForm({ sale, compact }: { sale?: SaleRow; compact?: boolean
                       className={`h-10 rounded-xl border text-sm transition ${status === "TODO" ? "border-rose-400 bg-rose-500/20 text-rose-200" : "border-line bg-card text-text hover:border-rose-500/50"}`}
                     >
                       Доделать
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStatus("WAITING");
-                        persistDraft({ status: "WAITING" });
-                      }}
-                      className={`h-10 rounded-xl border text-sm transition ${status === "WAITING" ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-line bg-card text-text hover:border-amber-500/50"}`}
-                    >
-                      Ожидание
                     </button>
                   </div>
                 </div>

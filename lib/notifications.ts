@@ -94,7 +94,7 @@ function pendingWindowKey(now: Date) {
 
 function pendingMessage(input: { clientName: string; clientPhone: string; productName: string; status: SaleStatus; id: string }) {
   return [
-    `Нужно доработать товар (${input.status === "TODO" ? "Доделать" : "Ожидание"})`,
+    `Нужно доработать товар (${input.status === "TODO" ? "Доделать" : "Открыто"})`,
     `Товар: ${input.productName || "-"}`,
     `Клиент: ${input.clientName || "-"}`,
     `Телефон: ${input.clientPhone || "-"}`,
@@ -257,7 +257,7 @@ export async function runNotifications(scope: RunNotificationScope = {}) {
 
   const sales = await prisma.sale.findMany({
     where: {
-      status: { in: [SaleStatus.TODO, SaleStatus.WAITING] },
+      status: SaleStatus.TODO,
       ...(scope.userId ? { createdById: scope.userId } : {})
     },
     select: {

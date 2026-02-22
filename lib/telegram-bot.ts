@@ -32,7 +32,7 @@ async function getOpenSalesCount(userId: string | null) {
   const count = await prisma.sale.count({
     where: {
       createdById: userId,
-      status: { in: ["TODO", "WAITING"] }
+      status: "TODO"
     }
   });
   return count;
@@ -142,7 +142,7 @@ export async function handleTelegramWebhook(update: TelegramUpdate) {
       chatId,
       [
         `Статус подключения: ${existing.telegramEnabled ? "включено" : "выключено"}`,
-        `Открытых карточек (TODO/WAITING): ${open ?? "-"}`
+        `Открытых карточек (Доделать): ${open ?? "-"}`
       ].join("\n")
     );
     return { ok: true };
