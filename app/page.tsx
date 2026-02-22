@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { ChartNoAxesCombined, LogOut, TrendingUp, User } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { SalesForm } from "@/components/sales-form";
 import { SalesTable } from "@/components/sales-table";
 import { CalculationCard } from "@/components/calculation-card";
 import { ScriptsBoard } from "@/components/scripts-board";
@@ -153,9 +152,6 @@ export default async function Home() {
 
         <SalesTable sales={uiSales} />
 
-        <div className="fixed bottom-5 left-5 z-40">
-          <SalesForm iconOnly />
-        </div>
       </div>
     </main>
   );

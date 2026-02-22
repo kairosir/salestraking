@@ -372,7 +372,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24 lg:pb-4">
       <div className="rounded-2xl border border-line bg-card/60 bg-panel p-3 sm:p-4">
         <div className="relative mb-3">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -863,23 +863,24 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         </div>
       )}
 
-      <div className="fixed bottom-24 left-5 z-40 flex flex-col gap-2 sm:bottom-5">
+      <div className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-5">
         <button
           type="button"
           onClick={() => setArchiveOpen(true)}
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-line bg-card text-text shadow-glow transition hover:border-accent"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-card text-text shadow-glow transition hover:border-accent"
           title="Архив"
         >
-          <Archive size={20} />
+          <Archive size={16} />
         </button>
         <button
           type="button"
           onClick={() => setTrashOpen(true)}
-          className="btn-primary inline-flex h-14 w-14 items-center justify-center rounded-full shadow-glow"
+          className="btn-primary inline-flex h-11 w-11 items-center justify-center rounded-full shadow-glow"
           title="Корзина"
         >
-          <Trash2 size={20} />
+          <Trash2 size={16} />
         </button>
+        <SalesForm iconOnly iconOnlySmall />
       </div>
 
       {archiveOpen && (
