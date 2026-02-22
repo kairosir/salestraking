@@ -100,8 +100,8 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-bg bg-mesh">
-      <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-5 sm:py-5">
-        <header className="rounded-3xl border border-line bg-card/75 bg-panel p-3 backdrop-blur sm:p-4">
+      <div className="mx-auto flex w-full max-w-[1520px] flex-col gap-4 px-2.5 py-3 sm:gap-6 sm:px-5 sm:py-5">
+        <header className="rounded-3xl border border-line bg-card/75 bg-panel p-2.5 backdrop-blur sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
               <div className="overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-glow">
@@ -135,7 +135,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:mt-4 sm:gap-3 md:grid-cols-5">
+          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:mt-4 sm:gap-3 md:grid-cols-5">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
             <StatCard icon={<TengeIcon />} label="Выручка" value={money(totals.revenue)} />
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
@@ -181,12 +181,12 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="flex h-[82px] flex-col rounded-2xl border border-line bg-card/70 bg-panel p-2.5 sm:h-28 sm:p-3.5">
-      <p className="inline-flex items-center gap-2 text-xs text-muted sm:text-sm">
+    <div className="flex h-[80px] flex-col rounded-2xl border border-line bg-card/70 bg-panel px-2.5 py-2 sm:h-28 sm:p-3.5">
+      <p className="inline-flex items-center gap-2 text-sm text-muted sm:text-sm">
         <span>{icon}</span>
         {label}
       </p>
-      <p className={`mt-1 text-lg font-semibold leading-none sm:mt-3 sm:text-xl ${accent ? "text-success" : "text-text"}`}>{value}</p>
+      <p className={`mt-1 text-xl font-semibold leading-none sm:mt-3 sm:text-xl ${accent ? "text-success" : "text-text"}`}>{value}</p>
     </div>
   );
 }
