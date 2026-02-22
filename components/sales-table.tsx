@@ -414,7 +414,18 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                           </a>
                         )}
                       </div>
-                      <p className="text-xs text-muted lg:col-span-9">{group.sales.length} товар(ов)</p>
+                      <div className="flex items-center justify-between gap-2 lg:col-span-9">
+                        <p className="text-xs text-muted">{group.sales.length} товар(ов)</p>
+                        <div onClick={(event) => event.stopPropagation()}>
+                          <SalesForm
+                            compact
+                            initialClient={{
+                              clientName: group.clientName,
+                              clientPhone: group.clientPhone === "-" ? "" : group.clientPhone
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {isExpanded && (
@@ -531,6 +542,15 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 </div>
                 {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
               </button>
+              <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+                <SalesForm
+                  compact
+                  initialClient={{
+                    clientName: group.clientName,
+                    clientPhone: group.clientPhone === "-" ? "" : group.clientPhone
+                  }}
+                />
+              </div>
               {isExpanded && (
                 <div className="mt-2 space-y-2 border-t border-line pt-2">
                   {group.sales.map((sale) => {
