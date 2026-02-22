@@ -16,6 +16,8 @@ type SyncSummary = {
   enabled: boolean;
   candidates: number;
   groups: number;
+  totalWithTrackCodes: number;
+  sampleTrackRows: Array<{ id: string; status: SaleStatus; productId: string | null; trackingNumber: string | null }>;
   checked: number;
   updated: number;
   failed: number;
@@ -250,6 +252,8 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
       enabled: false,
       candidates: 0,
       groups: 0,
+      totalWithTrackCodes: 0,
+      sampleTrackRows: [],
       checked: 0,
       updated: 0,
       failed: 0,
@@ -272,6 +276,24 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
         ]
       };
   const statusFilter = scope.force ? {} : { status: { in: [SaleStatus.TODO, SaleStatus.DONE] } };
+
+  const [totalWithTrackCodes, sampleTrackRows] = await Promise.all([
+    prisma.sale.count({
+      where: {
+        OR: [{ trackingNumber: { not: null } }, { productId: { not: null } }],
+        ...(scope.userId ? { createdById: scope.userId } : {})
+      }
+    }),
+    prisma.sale.findMany({
+      where: {
+        OR: [{ trackingNumber: { not: null } }, { productId: { not: null } }],
+        ...(scope.userId ? { createdById: scope.userId } : {})
+      },
+      select: { id: true, status: true, productId: true, trackingNumber: true },
+      orderBy: { updatedAt: "desc" },
+      take: 5
+    })
+  ]);
 
   const sales = (await prisma.sale.findMany({
     where: {
@@ -444,6 +466,8 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
     enabled: true,
     candidates: sales.length,
     groups: grouped.size,
+    totalWithTrackCodes,
+    sampleTrackRows,
     checked,
     updated,
     failed,
