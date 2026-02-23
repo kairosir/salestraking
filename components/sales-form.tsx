@@ -1,9 +1,10 @@
 "use client";
 
-import { type SyntheticEvent, useMemo, useRef, useState, useTransition } from "react";
+import { type SyntheticEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { ChevronDown, FileImage, Loader2, Pencil, Plus, Upload, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { createSaleAction, updateSaleAction } from "@/app/actions";
 
 type SaleRow = {
@@ -412,6 +413,7 @@ export function SalesForm({
   initialClient?: { clientName?: string; clientPhone?: string };
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -659,6 +661,11 @@ export function SalesForm({
     persistDraft({ lineItems: next });
   };
 
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   return (
     <>
       <button
@@ -688,10 +695,11 @@ export function SalesForm({
             : "Добавить"}
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg sm:h-auto sm:max-h-[94vh] sm:max-w-3xl sm:rounded-3xl">
-            <div className="p-4 sm:p-6">
+      {open && mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
+            <div className="h-[90vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg sm:h-auto sm:max-h-[94vh] sm:max-w-3xl sm:rounded-3xl">
+              <div className="p-4 sm:p-6">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-semibold text-text">{sale ? "Редактирование" : "Новая продажа"}</h2>
@@ -915,14 +923,15 @@ export function SalesForm({
                   </button>
                 </div>
               </form>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        , document.body)}
 
-      {cropSource && (
-        <div className="fixed inset-0 z-[120] grid place-items-end bg-black/90 p-0 sm:place-items-center sm:p-4">
-          <div className="h-[92vh] w-full rounded-t-3xl border border-line bg-bg p-3 sm:h-auto sm:max-h-[94vh] sm:max-w-4xl sm:rounded-3xl sm:p-4">
+      {cropSource && mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-[120] grid place-items-end bg-black/90 p-0 sm:place-items-center sm:p-4">
+            <div className="h-[92vh] w-full rounded-t-3xl border border-line bg-bg p-3 sm:h-auto sm:max-h-[94vh] sm:max-w-4xl sm:rounded-3xl sm:p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold text-text">Обрезка скрина товара</p>
               <button
@@ -974,9 +983,9 @@ export function SalesForm({
                 Применить
               </button>
             </div>
+            </div>
           </div>
-        </div>
-      )}
+        , document.body)}
     </>
   );
 }
