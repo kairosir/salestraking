@@ -186,6 +186,20 @@ function serializeScreenshotList(list: string[]) {
   return JSON.stringify(normalized);
 }
 
+function parseTrackCodes(raw: string | null | undefined): string[] {
+  if (!raw) return [""];
+  const normalized = raw
+    .split(/[\n,;]/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return normalized.length ? normalized : [""];
+}
+
+function serializeTrackCodes(codes: string[]) {
+  const normalized = codes.map((item) => item.trim()).filter(Boolean);
+  return normalized.join(", ");
+}
+
 function emptyDraft(): SaleDraft {
   return {
     orderDate: "",
@@ -249,6 +263,7 @@ function ItemEditor({
   const qty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
   const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT * qty;
   const margin = (parseFlexibleNumber(item.salePrice) * qty - costKzt) * 0.95;
+  const trackCodes = parseTrackCodes(item.productId);
 
   return (
     <div className="rounded-2xl border border-line bg-card">
@@ -281,12 +296,43 @@ function ItemEditor({
             </div>
             <div>
               <Label text="Трек-код" />
-              <input
-                className={inputClass}
-                placeholder="TRK123456"
-                value={item.productId}
-                onChange={(e) => onChange({ productId: e.target.value })}
-              />
+              <div className="space-y-2">
+                {trackCodes.map((code, idx) => (
+                  <div key={`trk-${index}-${idx}`} className="flex items-center gap-2">
+                    <input
+                      className={inputClass}
+                      placeholder={`TRK${idx + 1}`}
+                      value={code}
+                      onChange={(e) => {
+                        const next = [...trackCodes];
+                        next[idx] = e.target.value;
+                        onChange({ productId: serializeTrackCodes(next) });
+                      }}
+                    />
+                    {trackCodes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = trackCodes.filter((_, i) => i !== idx);
+                          onChange({ productId: serializeTrackCodes(next) });
+                        }}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-500/40 text-red-300 transition hover:bg-red-500/10"
+                        title="Удалить трек-код"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => onChange({ productId: serializeTrackCodes([...trackCodes, ""]) })}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-line px-2 text-xs text-text transition hover:border-accent"
+                >
+                  <Plus size={12} />
+                  Добавить трек-код
+                </button>
+              </div>
             </div>
           </div>
 
@@ -316,10 +362,17 @@ function ItemEditor({
               <Label text="Количество" />
               <input
                 className={inputClass}
-                type="number"
-                min={1}
+                type="text"
+                inputMode="numeric"
                 value={item.quantity}
-                onChange={(e) => onChange({ quantity: String(Math.max(1, Number(e.target.value || 1))) })}
+                onChange={(e) => {
+                  const onlyDigits = e.target.value.replace(/[^\d]/g, "");
+                  onChange({ quantity: onlyDigits });
+                }}
+                onBlur={() => {
+                  const normalized = String(Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1)));
+                  if (normalized !== item.quantity) onChange({ quantity: normalized });
+                }}
               />
             </div>
             <div>
