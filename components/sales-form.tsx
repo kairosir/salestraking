@@ -188,15 +188,25 @@ function serializeScreenshotList(list: string[]) {
 
 function parseTrackCodes(raw: string | null | undefined): string[] {
   if (!raw) return [""];
-  const normalized = raw
-    .split(/[\n,;]/g)
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return normalized.length ? normalized : [""];
+  const trimmed = raw.trim();
+  if (!trimmed) return [""];
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        const asStrings = parsed.map((item) => (typeof item === "string" ? item.trim() : ""));
+        return asStrings.length ? asStrings : [""];
+      }
+    } catch {
+      // ignore and fallback to split
+    }
+  }
+  const split = raw.split(/[\n,;]/g).map((item) => item.trim());
+  return split.length ? split : [""];
 }
 
 function serializeTrackCodes(codes: string[]) {
-  const normalized = codes.map((item) => item.trim()).filter(Boolean);
+  const normalized = codes.map((item) => item.trim());
   return normalized.join(", ");
 }
 
