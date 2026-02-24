@@ -58,7 +58,7 @@ export default async function Home() {
 
   const totals = sales.reduce(
     (acc, sale) => {
-      acc.revenue += Number(sale.salePrice) * sale.quantity;
+      acc.revenue += Number(sale.salePrice);
       acc.margin += Number(sale.margin);
       return acc;
     },

@@ -314,7 +314,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       if (sort === "newest") return safeTime(b.createdAt) - safeTime(a.createdAt);
       if (sort === "oldest") return safeTime(a.createdAt) - safeTime(b.createdAt);
       if (sort === "marginDesc") return Number(b.margin) - Number(a.margin);
-      return Number(b.salePrice) * b.quantity - Number(a.salePrice) * a.quantity;
+      return Number(b.salePrice) - Number(a.salePrice);
     });
   }, [query, activeSales, author, sort]);
 
@@ -516,7 +516,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     {isExpanded && (
                       <div className="space-y-1 pb-1">
                         {group.sales.map((sale) => {
-                          const revenue = Number(sale.salePrice) * sale.quantity;
+                          const revenue = Number(sale.salePrice);
                           return (
                             <div
                               key={sale.id}
@@ -636,7 +636,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               {isExpanded && (
                 <div className="mt-2 space-y-2 border-t border-line pt-2">
                   {group.sales.map((sale) => {
-                    const revenue = Number(sale.salePrice) * sale.quantity;
+                    const revenue = Number(sale.salePrice);
                     return (
                       <div key={sale.id} className="rounded-xl border border-line bg-card p-2" onClick={() => openSaleDetails(sale)}>
                         <div className="flex items-start gap-2">
@@ -685,7 +685,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
       <div className={`space-y-2 lg:hidden ${mobileView === "list" ? "block" : "hidden"}`}>
         {filteredActiveSales.map((sale) => {
-          const revenue = Number(sale.salePrice) * sale.quantity;
+          const revenue = Number(sale.salePrice);
           const wa = waLink(sale.clientPhone);
           return (
             <article
@@ -772,7 +772,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <Info label="Цена товара (₸)" value={money(selectedSale.costPrice)} />
               <Info label="Цена продажи (₸)" value={money(selectedSale.salePrice)} />
               <Info label="Маржа (₸)" value={money(selectedSale.margin)} />
-              <Info label="Выручка (₸)" value={money(Number(selectedSale.salePrice) * selectedSale.quantity)} />
+              <Info label="Выручка (₸)" value={money(Number(selectedSale.salePrice))} />
               <Info label="Статус" value={statusLabel(selectedSale.status)} />
               <Info label="Создал" value={selectedSale.createdByName} />
               <Info label="Изменил" value={selectedSale.updatedByName} />

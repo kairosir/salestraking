@@ -32,6 +32,7 @@ type FormLineItem = {
   productId: string;
   productLink: string;
   size: string;
+  sizeCustom: boolean;
   quantity: string;
   costPriceCny: string;
   salePrice: string;
@@ -55,6 +56,9 @@ type CropTarget = { itemIndex: number; shotIndex: number | null; kind: "product"
 const CNY_TO_KZT = 80;
 const MAX_IMAGE_BYTES = 1_100_000;
 const SALE_DRAFT_KEY = "salestraking:new-sale-draft:v2";
+const OWN_OPTION = "__custom__";
+const PAID_TO_OPTIONS = ["Halyk", "Kaspi", "Kaspi Pay", "Kaspi Red", "Kaspi рассрочка", "Kaspi перевод", "BCC", "Freedom Bank", "Наличные"];
+const SIZE_OPTIONS = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "Стандарт"];
 
 const inputClass =
   "h-11 w-full rounded-xl border border-line bg-card px-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-accent";
@@ -163,6 +167,7 @@ function emptyLineItem(): FormLineItem {
     productId: "",
     productLink: "",
     size: "",
+    sizeCustom: false,
     quantity: "1",
     costPriceCny: "",
     salePrice: "",
@@ -286,9 +291,8 @@ function ItemEditor({
   onRemoveReceipt: (index: number, shotIndex: number) => void;
   onPreviewImage: (src: string, title: string) => void;
 }) {
-  const qty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
-  const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT * qty;
-  const margin = (parseFlexibleNumber(item.salePrice) * qty - costKzt) * 0.95;
+  const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
+  const margin = (parseFlexibleNumber(item.salePrice) - costKzt) * 0.95;
   const trackCodes = parseTrackCodes(item.productId);
 
   return (
@@ -374,12 +378,32 @@ function ItemEditor({
             </div>
             <div>
               <Label text="Размер" />
-              <input
+              <select
                 className={inputClass}
-                placeholder="M, L, 42"
-                value={item.size}
-                onChange={(e) => onChange({ size: e.target.value })}
-              />
+                value={item.sizeCustom ? OWN_OPTION : (item.size || "")}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next === OWN_OPTION) {
+                    onChange({ sizeCustom: true, size: item.sizeCustom ? item.size : "" });
+                    return;
+                  }
+                  onChange({ sizeCustom: false, size: next });
+                }}
+              >
+                <option value="">Не указан</option>
+                {SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+                <option value={OWN_OPTION}>Свое</option>
+              </select>
+              {item.sizeCustom && (
+                <input
+                  className={inputClass + " mt-2"}
+                  placeholder="Введите свой размер"
+                  value={item.size}
+                  onChange={(e) => onChange({ size: e.target.value, sizeCustom: true })}
+                />
+              )}
             </div>
           </div>
 
@@ -549,6 +573,7 @@ export function SalesForm({
   const [orderDate, setOrderDate] = useState<string>(sale ? toDateInputValue(sale.orderDate) : "");
   const [paymentDate, setPaymentDate] = useState<string>(sale ? toDateInputValue(sale.paymentDate) : "");
   const [paidTo, setPaidTo] = useState<string>(sale?.paidTo ?? "");
+  const [paidToCustom, setPaidToCustom] = useState<boolean>(Boolean(sale?.paidTo && !PAID_TO_OPTIONS.includes(sale.paidTo)));
   const [clientName, setClientName] = useState<string>(sale?.clientName ?? "");
   const [clientPhone, setClientPhone] = useState<string>(sale?.clientPhone ?? "");
 
@@ -560,6 +585,7 @@ export function SalesForm({
             productId: sale.productId ?? "",
             productLink: sale.productLink ?? "",
             size: sale.size ?? "",
+            sizeCustom: sale.size ? !SIZE_OPTIONS.includes(sale.size) : false,
             quantity: String(sale.quantity || 1),
             costPriceCny: sale.costPriceCny ?? "",
             salePrice: sale.salePrice ?? "",
@@ -589,15 +615,13 @@ export function SalesForm({
 
   const totals = useMemo(() => {
     const costKzt = lineItems.reduce((sum, item) => {
-      const itemQty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
       const itemCostKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
-      return sum + itemCostKzt * itemQty;
+      return sum + itemCostKzt;
     }, 0);
 
     const saleKzt = lineItems.reduce((sum, item) => {
-      const itemQty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
       const itemSale = parseFlexibleNumber(item.salePrice);
-      return sum + itemSale * itemQty;
+      return sum + itemSale;
     }, 0);
 
     return {
@@ -711,6 +735,7 @@ export function SalesForm({
       setOrderDate(merged.orderDate);
       setPaymentDate(merged.paymentDate);
       setPaidTo(merged.paidTo);
+      setPaidToCustom(Boolean(merged.paidTo && !PAID_TO_OPTIONS.includes(merged.paidTo)));
       setClientName(merged.clientName);
       setClientPhone(merged.clientPhone);
       setStatus(merged.status);
@@ -892,16 +917,42 @@ export function SalesForm({
 
                 <div>
                   <Label text="Куда оплатили" />
-                  <input
+                  <input type="hidden" name="paidTo" value={paidTo} />
+                  <select
                     className={inputClass}
-                    placeholder="Kaspi / карта / supplier"
-                    name="paidTo"
-                    value={paidTo}
+                    value={paidToCustom ? OWN_OPTION : (paidTo || "")}
                     onChange={(e) => {
-                      setPaidTo(e.target.value);
-                      persistDraft({ paidTo: e.target.value });
+                      const next = e.target.value;
+                      if (next === OWN_OPTION) {
+                        setPaidToCustom(true);
+                        if (!paidTo || PAID_TO_OPTIONS.includes(paidTo)) {
+                          setPaidTo("");
+                          persistDraft({ paidTo: "" });
+                        }
+                        return;
+                      }
+                      setPaidToCustom(false);
+                      setPaidTo(next);
+                      persistDraft({ paidTo: next });
                     }}
-                  />
+                  >
+                    <option value="">Не указано</option>
+                    {PAID_TO_OPTIONS.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                    <option value={OWN_OPTION}>Свое</option>
+                  </select>
+                  {paidToCustom && (
+                    <input
+                      className={inputClass + " mt-2"}
+                      placeholder="Введите свой способ оплаты"
+                      value={paidTo}
+                      onChange={(e) => {
+                        setPaidTo(e.target.value);
+                        persistDraft({ paidTo: e.target.value });
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

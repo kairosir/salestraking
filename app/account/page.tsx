@@ -77,7 +77,7 @@ export default async function AccountPage() {
   }
 
   const totalMargin = Number(myAgg._sum.margin ?? 0);
-  const totalRevenue = allMySalesForRevenue.reduce((sum, sale) => sum + Number(sale.salePrice) * sale.quantity, 0);
+  const totalRevenue = allMySalesForRevenue.reduce((sum, sale) => sum + Number(sale.salePrice), 0);
   const totalSalesCount = myAgg._count.id;
 
   return (
