@@ -7,12 +7,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!session?.user?.id) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  if (!id) return NextResponse.json({ screenshotData: null });
+  if (!id) return NextResponse.json({ screenshotData: null, receiptData: null });
 
   const sale = await prisma.sale.findUnique({
     where: { id },
-    select: { screenshotData: true }
+    select: { screenshotData: true, receiptData: true }
   });
 
-  return NextResponse.json({ screenshotData: sale?.screenshotData ?? null });
+  return NextResponse.json({ screenshotData: sale?.screenshotData ?? null, receiptData: sale?.receiptData ?? null });
 }

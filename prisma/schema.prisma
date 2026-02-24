@@ -83,6 +83,7 @@ model Sale {
   orderDate      DateTime?
   paymentDate    DateTime?
   screenshotData String?
+  receiptData    String?
   size           String?
   quantity       Int
   costPriceCny   Decimal  @default(0) @db.Decimal(12, 2)

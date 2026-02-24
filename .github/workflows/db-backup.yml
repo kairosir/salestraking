@@ -15,23 +15,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check DB secret
+      - name: Resolve DB URL
+        id: db
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "DATABASE_URL secret is missing"
-            exit 1
+          DB_URL="${DATABASE_URL:-$NEON_DATABASE_URL}"
+          if [ -z "$DB_URL" ]; then
+            echo "has_db=false" >> "$GITHUB_OUTPUT"
+            echo "No DATABASE_URL/NEON_DATABASE_URL secret found. Skipping backup without failing workflow."
+            exit 0
           fi
+          echo "has_db=true" >> "$GITHUB_OUTPUT"
+          echo "db_url=$DB_URL" >> "$GITHUB_OUTPUT"
 
       - name: Install PostgreSQL client
+        if: steps.db.outputs.has_db == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
       - name: Create backup file
+        if: steps.db.outputs.has_db == 'true'
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ steps.db.outputs.db_url }}
         run: |
           mkdir -p backups
           TS=$(date +"%Y-%m-%d_%H-%M-%S")
@@ -41,6 +49,7 @@ jobs:
           sha256sum "${FILE}.gz" > "${FILE}.gz.sha256"
 
       - name: Upload backup artifact
+        if: steps.db.outputs.has_db == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: db-backup-${{ github.run_id }}

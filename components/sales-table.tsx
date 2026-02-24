@@ -35,7 +35,9 @@ type Sale = {
   orderDate: string | null;
   paymentDate: string | null;
   screenshotData: string | null;
+  receiptData: string | null;
   hasScreenshot?: boolean;
+  hasReceipt?: boolean;
   trackingNumber: string | null;
   trackingProvider: string | null;
   trackingStatus: string | null;
@@ -198,6 +200,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [trashTargetSale, setTrashTargetSale] = useState<Sale | null>(null);
   const [screenshotCache, setScreenshotCache] = useState<Record<string, string>>({});
+  const [receiptCache, setReceiptCache] = useState<Record<string, string>>({});
   const [screenshotLoadingId, setScreenshotLoadingId] = useState<string | null>(null);
   const [screenshotError, setScreenshotError] = useState<Record<string, string>>({});
 
@@ -212,6 +215,9 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [markingDone, startMarkingDone] = useTransition();
   const selectedScreenshots = selectedSale
     ? parseScreenshotList(selectedSale.screenshotData || screenshotCache[selectedSale.id] || "")
+    : [];
+  const selectedReceipts = selectedSale
+    ? parseScreenshotList(selectedSale.receiptData || receiptCache[selectedSale.id] || "")
     : [];
 
   const confirmMoveSaleToTrash = () => {
@@ -243,11 +249,15 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         setScreenshotError((prev) => ({ ...prev, [saleId]: `Ошибка загрузки (${res.status})` }));
         return;
       }
-      const json = (await res.json()) as { screenshotData?: string | null };
+      const json = (await res.json()) as { screenshotData?: string | null; receiptData?: string | null };
       if (json.screenshotData) {
         setScreenshotCache((prev) => ({ ...prev, [saleId]: json.screenshotData as string }));
-      } else {
-        setScreenshotError((prev) => ({ ...prev, [saleId]: "Скрин не найден" }));
+      }
+      if (json.receiptData) {
+        setReceiptCache((prev) => ({ ...prev, [saleId]: json.receiptData as string }));
+      }
+      if (!json.screenshotData && !json.receiptData) {
+        setScreenshotError((prev) => ({ ...prev, [saleId]: "Скрины не найдены" }));
       }
     } catch {
       setScreenshotError((prev) => ({ ...prev, [saleId]: "Не удалось загрузить скрин" }));
@@ -258,7 +268,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
 
   const openSaleDetails = async (sale: Sale) => {
     setSelectedSale(sale);
-    if (!sale.hasScreenshot || screenshotCache[sale.id]) return;
+    if ((!sale.hasScreenshot || screenshotCache[sale.id]) && (!sale.hasReceipt || receiptCache[sale.id])) return;
     await loadScreenshot(sale.id);
   };
 
@@ -542,6 +552,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                                     orderDate: sale.orderDate,
                                     paymentDate: sale.paymentDate,
                                     screenshotData: sale.screenshotData,
+                                    receiptData: sale.receiptData,
                                     size: sale.size,
                                     quantity: sale.quantity,
                                     costPriceCny: sale.costPriceCny,
@@ -645,6 +656,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                               orderDate: sale.orderDate,
                               paymentDate: sale.paymentDate,
                               screenshotData: sale.screenshotData,
+                                    receiptData: sale.receiptData,
                               size: sale.size,
                               quantity: sale.quantity,
                               costPriceCny: sale.costPriceCny,
@@ -774,12 +786,23 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               </div>
             )}
 
-            {selectedSale.hasScreenshot && !selectedSale.screenshotData && !screenshotCache[selectedSale.id] && (
+            {selectedReceipts.length > 0 && (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {selectedReceipts.map((shot, idx) => (
+                  <div key={`selected-receipt-${idx}`} className="overflow-hidden rounded-2xl border border-line">
+                    <img src={shot} alt={`Скрин чека ${idx + 1}`} className="max-h-[320px] w-full object-contain bg-card" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {((selectedSale.hasScreenshot && !selectedSale.screenshotData && !screenshotCache[selectedSale.id]) ||
+              (selectedSale.hasReceipt && !selectedSale.receiptData && !receiptCache[selectedSale.id])) && (
               <div className="mt-4 rounded-2xl border border-line bg-card p-3">
                 <p className="text-xs text-muted">
                   {screenshotLoadingId === selectedSale.id
-                    ? "Загрузка скрина..."
-                    : screenshotError[selectedSale.id] || "Скрин не загружен"}
+                    ? "Загрузка скринов..."
+                    : screenshotError[selectedSale.id] || "Скрины не загружены"}
                 </p>
                 {screenshotLoadingId !== selectedSale.id && (
                   <button
@@ -787,7 +810,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                     onClick={() => loadScreenshot(selectedSale.id)}
                     className="mt-2 inline-flex h-9 items-center gap-2 rounded-xl border border-line bg-bg px-3 text-xs text-text transition hover:border-accent"
                   >
-                    Загрузить скрин
+                    Загрузить скрины
                   </button>
                 )}
               </div>
@@ -980,6 +1003,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                                     orderDate: sale.orderDate,
                                     paymentDate: sale.paymentDate,
                                     screenshotData: sale.screenshotData,
+                                    receiptData: sale.receiptData,
                                     size: sale.size,
                                     quantity: sale.quantity,
                                     costPriceCny: sale.costPriceCny,

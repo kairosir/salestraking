@@ -58,6 +58,7 @@ type SaleLineItem = {
   costPriceCny: number;
   salePrice: number;
   screenshotData: string | null;
+  receiptData: string | null;
 };
 
 function parseScreenshotList(raw: string | null | undefined): string[] {
@@ -94,6 +95,7 @@ function parseLineItems(raw: unknown): SaleLineItem[] {
         const rawProductLink = normalizeOptionalString(item.productLink);
         const rawSize = normalizeOptionalString(item.size);
         const rawScreenshot = normalizeOptionalString(item.screenshotData);
+        const rawReceipt = normalizeOptionalString(item.receiptData);
         const quantity = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
         const costPriceCny = Math.max(0, parseFlexibleNumber(item.costPriceCny));
         const salePrice = Math.max(0, parseFlexibleNumber(item.salePrice));
@@ -106,7 +108,8 @@ function parseLineItems(raw: unknown): SaleLineItem[] {
           costPriceCny,
           salePrice,
           screenshotData: rawScreenshot,
-          hasMeaningfulData: Boolean(rawProductName || rawProductId || costPriceCny > 0 || salePrice > 0 || rawScreenshot)
+          receiptData: rawReceipt,
+          hasMeaningfulData: Boolean(rawProductName || rawProductId || costPriceCny > 0 || salePrice > 0 || rawScreenshot || rawReceipt)
         };
       })
       .filter((item) => item.hasMeaningfulData)
@@ -188,11 +191,16 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const orderDate = parseDate(normalizeOptionalDateString(formData.get("orderDate")));
     const paymentDate = parseDate(normalizeOptionalDateString(formData.get("paymentDate")));
     const screenshotDataRaw = normalizeOptionalString(formData.get("screenshotData")) ?? "";
+    const receiptDataRaw = normalizeOptionalString(formData.get("receiptData")) ?? "";
     const lineItems = parseLineItems(formData.get("lineItems"));
     const trackingFirstCheckAt = addDays(new Date(), TRACKING_FIRST_CHECK_DAYS);
 
     if (screenshotDataRaw !== "__KEEP__" && !isScreenshotPayloadValid(screenshotDataRaw)) {
-      return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
+      return { ok: false, error: "Скрин товара слишком большой. Выберите более легкий файл." };
+    }
+
+    if (receiptDataRaw !== "__KEEP__" && !isScreenshotPayloadValid(receiptDataRaw)) {
+      return { ok: false, error: "Скрин чека слишком большой. Выберите более легкий файл." };
     }
 
     const shared = {
@@ -202,6 +210,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       orderDate,
       paymentDate,
       screenshotData: screenshotDataRaw && screenshotDataRaw !== "__KEEP__" ? screenshotDataRaw : null,
+      receiptData: receiptDataRaw && receiptDataRaw !== "__KEEP__" ? receiptDataRaw : null,
       status,
       isIssued: false,
       createdById: session.user.id,
@@ -213,6 +222,9 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         if (!isScreenshotPayloadValid(item.screenshotData)) {
           return { ok: false, error: "Скрин одного из товаров слишком большой. Выберите более легкий файл." };
         }
+        if (!isScreenshotPayloadValid(item.receiptData)) {
+          return { ok: false, error: "Скрин чека одного из товаров слишком большой. Выберите более легкий файл." };
+        }
       }
       await prisma.$transaction(
         lineItems.map((item) => {
@@ -222,6 +234,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
             data: {
               ...shared,
               screenshotData: item.screenshotData || shared.screenshotData,
+              receiptData: item.receiptData || shared.receiptData,
               productId: item.productId,
               trackingNumber: item.productId,
               trackingProvider: item.productId ? "17TRACK" : null,
@@ -257,6 +270,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         orderDate: formData.get("orderDate"),
         paymentDate: formData.get("paymentDate"),
         screenshotData: formData.get("screenshotData"),
+        receiptData: formData.get("receiptData"),
         size: formData.get("size"),
         status,
         quantity: formData.get("quantity"),
@@ -408,6 +422,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       orderDate: formData.get("orderDate"),
       paymentDate: formData.get("paymentDate"),
       screenshotData: formData.get("screenshotData"),
+      receiptData: formData.get("receiptData"),
       size: formData.get("size"),
       status: formData.get("status"),
       quantity: formData.get("quantity"),
@@ -432,9 +447,14 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const orderDate = parseDate(normalizeOptionalDateString(data.orderDate));
     const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
     const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
+    const receiptDataRaw = normalizeOptionalString(data.receiptData) ?? "";
 
     if (screenshotDataRaw !== "__KEEP__" && !isScreenshotPayloadValid(screenshotDataRaw)) {
-      return { ok: false, error: "Скрин слишком большой. Выберите более легкий файл." };
+      return { ok: false, error: "Скрин товара слишком большой. Выберите более легкий файл." };
+    }
+
+    if (receiptDataRaw !== "__KEEP__" && !isScreenshotPayloadValid(receiptDataRaw)) {
+      return { ok: false, error: "Скрин чека слишком большой. Выберите более легкий файл." };
     }
 
     const costPriceCny = Number(data.costPriceCny);
@@ -492,6 +512,10 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
 
     if (screenshotDataRaw !== "__KEEP__") {
       updateData.screenshotData = screenshotDataRaw || null;
+    }
+
+    if (receiptDataRaw !== "__KEEP__") {
+      updateData.receiptData = receiptDataRaw || null;
     }
 
     await prisma.sale.update({

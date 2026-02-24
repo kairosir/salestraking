@@ -18,6 +18,7 @@ type SaleRow = {
   orderDate: string | null;
   paymentDate: string | null;
   screenshotData: string | null;
+  receiptData: string | null;
   size: string | null;
   quantity: number;
   costPriceCny: string;
@@ -34,6 +35,7 @@ type FormLineItem = {
   costPriceCny: string;
   salePrice: string;
   screenshotData: string;
+  receiptData: string;
 };
 
 type SaleDraft = {
@@ -47,7 +49,7 @@ type SaleDraft = {
 };
 
 type CropPixels = { x: number; y: number; width: number; height: number };
-type CropTarget = { itemIndex: number; shotIndex: number | null };
+type CropTarget = { itemIndex: number; shotIndex: number | null; kind: "product" | "receipt" };
 
 const CNY_TO_KZT = 80;
 const MAX_IMAGE_BYTES = 1_100_000;
@@ -161,7 +163,8 @@ function emptyLineItem(): FormLineItem {
     quantity: "1",
     costPriceCny: "",
     salePrice: "",
-    screenshotData: ""
+    screenshotData: "",
+    receiptData: ""
   };
 }
 
@@ -256,7 +259,11 @@ function ItemEditor({
   onChange,
   onSelectScreenshot,
   onEditScreenshot,
-  onRemoveScreenshot
+  onRemoveScreenshot,
+  receipts,
+  onSelectReceipt,
+  onEditReceipt,
+  onRemoveReceipt
 }: {
   item: FormLineItem;
   index: number;
@@ -269,6 +276,10 @@ function ItemEditor({
   onSelectScreenshot: (index: number) => void;
   onEditScreenshot: (index: number, shotIndex: number) => void;
   onRemoveScreenshot: (index: number, shotIndex: number) => void;
+  receipts: string[];
+  onSelectReceipt: (index: number) => void;
+  onEditReceipt: (index: number, shotIndex: number) => void;
+  onRemoveReceipt: (index: number, shotIndex: number) => void;
 }) {
   const qty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
   const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT * qty;
@@ -407,52 +418,93 @@ function ItemEditor({
             </div>
           </div>
 
-          <div>
-            <Label text="Скрин товара" />
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onSelectScreenshot(index)}
-                className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
-              >
-                <Upload size={14} />
-                Добавить скрин
-              </button>
-              {removable && (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div>
+              <Label text="Скрин товара" />
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={onRemove}
-                  className="inline-flex h-9 items-center rounded-xl border border-red-500/40 px-3 text-sm text-red-300 transition hover:bg-red-500/10"
+                  onClick={() => onSelectScreenshot(index)}
+                  className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
                 >
-                  Удалить товар
+                  <Upload size={14} />
+                  Добавить скрин
                 </button>
+              </div>
+              {screenshots.length > 0 && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {screenshots.map((shot, shotIndex) => (
+                    <div key={`shot-${index}-${shotIndex}`} className="overflow-hidden rounded-xl border border-line bg-bg">
+                      <img src={shot} alt={`Скрин товара ${shotIndex + 1}`} className="h-28 w-full object-cover" />
+                      <div className="grid grid-cols-2 gap-1 border-t border-line p-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onEditScreenshot(index, shotIndex)}
+                          className="inline-flex h-8 items-center justify-center rounded-lg border border-line text-xs text-text transition hover:border-accent"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveScreenshot(index, shotIndex)}
+                          className="inline-flex h-8 items-center justify-center rounded-lg border border-red-500/40 text-xs text-red-300 transition hover:bg-red-500/10"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-            {screenshots.length > 0 && (
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {screenshots.map((shot, shotIndex) => (
-                  <div key={`shot-${index}-${shotIndex}`} className="overflow-hidden rounded-xl border border-line bg-bg">
-                    <img src={shot} alt={`Скрин ${shotIndex + 1}`} className="h-28 w-full object-cover" />
-                    <div className="grid grid-cols-2 gap-1 border-t border-line p-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onEditScreenshot(index, shotIndex)}
-                        className="inline-flex h-8 items-center justify-center rounded-lg border border-line text-xs text-text transition hover:border-accent"
-                      >
-                        <Pencil size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveScreenshot(index, shotIndex)}
-                        className="inline-flex h-8 items-center justify-center rounded-lg border border-red-500/40 text-xs text-red-300 transition hover:bg-red-500/10"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+
+            <div>
+              <Label text="Скрин чека" />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onSelectReceipt(index)}
+                  className="inline-flex h-9 items-center gap-2 rounded-xl border border-line px-3 text-sm text-text transition hover:border-accent"
+                >
+                  <FileImage size={14} />
+                  Добавить чек
+                </button>
+                {removable && (
+                  <button
+                    type="button"
+                    onClick={onRemove}
+                    className="inline-flex h-9 items-center rounded-xl border border-red-500/40 px-3 text-sm text-red-300 transition hover:bg-red-500/10"
+                  >
+                    Удалить товар
+                  </button>
+                )}
               </div>
-            )}
+              {receipts.length > 0 && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {receipts.map((shot, shotIndex) => (
+                    <div key={`receipt-${index}-${shotIndex}`} className="overflow-hidden rounded-xl border border-line bg-bg">
+                      <img src={shot} alt={`Скрин чека ${shotIndex + 1}`} className="h-28 w-full object-cover" />
+                      <div className="grid grid-cols-2 gap-1 border-t border-line p-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onEditReceipt(index, shotIndex)}
+                          className="inline-flex h-8 items-center justify-center rounded-lg border border-line text-xs text-text transition hover:border-accent"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveReceipt(index, shotIndex)}
+                          className="inline-flex h-8 items-center justify-center rounded-lg border border-red-500/40 text-xs text-red-300 transition hover:bg-red-500/10"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -480,8 +532,10 @@ export function SalesForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const productFileInputRef = useRef<HTMLInputElement | null>(null);
+  const receiptFileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadTargetIndex, setUploadTargetIndex] = useState<number | null>(null);
+  const [uploadTargetKind, setUploadTargetKind] = useState<"product" | "receipt">("product");
 
   const [orderDate, setOrderDate] = useState<string>(sale ? toDateInputValue(sale.orderDate) : "");
   const [paymentDate, setPaymentDate] = useState<string>(sale ? toDateInputValue(sale.paymentDate) : "");
@@ -500,7 +554,8 @@ export function SalesForm({
             quantity: String(sale.quantity || 1),
             costPriceCny: sale.costPriceCny ?? "",
             salePrice: sale.salePrice ?? "",
-            screenshotData: sale.screenshotData ?? ""
+            screenshotData: sale.screenshotData ?? "",
+            receiptData: sale.receiptData ?? ""
           }
         ]
       : [emptyLineItem()]
@@ -560,7 +615,7 @@ export function SalesForm({
     });
   };
 
-  const handleFile = (file: File, index: number) => {
+  const handleFile = (file: File, index: number, kind: "product" | "receipt") => {
     if (!file.type.startsWith("image/")) {
       setError("Можно загружать только изображения");
       return;
@@ -571,7 +626,7 @@ export function SalesForm({
       const result = String(reader.result ?? "");
       if (!result) return;
       setCropSource(result);
-      setCropTarget({ itemIndex: index, shotIndex: null });
+      setCropTarget({ itemIndex: index, shotIndex: null, kind });
       setCrop({
         unit: "%",
         x: 10,
@@ -611,7 +666,8 @@ export function SalesForm({
       setLineItems((prev) => {
         const next = prev.map((item, i) => {
           if (i !== cropTarget.itemIndex) return item;
-          const list = parseScreenshotList(item.screenshotData);
+          const fieldName = cropTarget.kind === "receipt" ? "receiptData" : "screenshotData";
+          const list = parseScreenshotList(item[fieldName]);
           if (cropTarget.shotIndex === null) {
             list.push(nextImage);
           } else if (cropTarget.shotIndex >= 0 && cropTarget.shotIndex < list.length) {
@@ -619,7 +675,7 @@ export function SalesForm({
           } else {
             list.push(nextImage);
           }
-          return { ...item, screenshotData: serializeScreenshotList(list) };
+          return { ...item, [fieldName]: serializeScreenshotList(list) };
         });
         persistDraft({ lineItems: next });
         return next;
@@ -671,6 +727,7 @@ export function SalesForm({
         formData.set("costPriceCny", first.costPriceCny);
         formData.set("salePrice", first.salePrice);
         formData.set("screenshotData", first.screenshotData || "");
+        formData.set("receiptData", first.receiptData || "");
         result = await updateSaleAction(formData);
       } else {
         const normalizedItems = lineItems.map((item) => ({
@@ -681,7 +738,8 @@ export function SalesForm({
           quantity: item.quantity,
           costPriceCny: item.costPriceCny,
           salePrice: item.salePrice,
-          screenshotData: item.screenshotData
+          screenshotData: item.screenshotData,
+          receiptData: item.receiptData
         }));
         formData.set("lineItems", JSON.stringify(normalizedItems));
         formData.set("screenshotData", "");
@@ -877,6 +935,7 @@ export function SalesForm({
                         item={item}
                         index={index}
                         screenshots={parseScreenshotList(item.screenshotData)}
+                        receipts={parseScreenshotList(item.receiptData)}
                         expanded={expandedItems.includes(index)}
                         removable={!sale && lineItems.length > 1}
                         onToggle={() => {
@@ -888,13 +947,14 @@ export function SalesForm({
                         onChange={(patch) => setLineItemPatch(index, patch)}
                         onSelectScreenshot={(targetIndex) => {
                           setUploadTargetIndex(targetIndex);
-                          fileInputRef.current?.click();
+                          setUploadTargetKind("product");
+                          productFileInputRef.current?.click();
                         }}
                         onEditScreenshot={(targetIndex, shotIndex) => {
                           const src = parseScreenshotList(lineItems[targetIndex]?.screenshotData)[shotIndex];
                           if (!src) return;
                           setCropSource(src);
-                          setCropTarget({ itemIndex: targetIndex, shotIndex });
+                          setCropTarget({ itemIndex: targetIndex, shotIndex, kind: "product" });
                           setCrop({ unit: "%", x: 10, y: 10, width: 80, height: 80 });
                           setCropPixels(null);
                         }}
@@ -910,19 +970,58 @@ export function SalesForm({
                             return next;
                           });
                         }}
+                        onSelectReceipt={(targetIndex) => {
+                          setUploadTargetIndex(targetIndex);
+                          setUploadTargetKind("receipt");
+                          receiptFileInputRef.current?.click();
+                        }}
+                        onEditReceipt={(targetIndex, shotIndex) => {
+                          const src = parseScreenshotList(lineItems[targetIndex]?.receiptData)[shotIndex];
+                          if (!src) return;
+                          setCropSource(src);
+                          setCropTarget({ itemIndex: targetIndex, shotIndex, kind: "receipt" });
+                          setCrop({ unit: "%", x: 10, y: 10, width: 80, height: 80 });
+                          setCropPixels(null);
+                        }}
+                        onRemoveReceipt={(targetIndex, shotIndex) => {
+                          setLineItems((prev) => {
+                            const next = prev.map((line, i) => {
+                              if (i !== targetIndex) return line;
+                              const list = parseScreenshotList(line.receiptData);
+                              const filtered = list.filter((_, idx) => idx !== shotIndex);
+                              return { ...line, receiptData: serializeScreenshotList(filtered) };
+                            });
+                            persistDraft({ lineItems: next });
+                            return next;
+                          });
+                        }}
                       />
                     ))}
                   </div>
 
                   <input
-                    ref={fileInputRef}
+                    ref={productFileInputRef}
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file && uploadTargetIndex !== null) {
-                        handleFile(file, uploadTargetIndex);
+                        handleFile(file, uploadTargetIndex, uploadTargetKind);
+                      }
+                      e.currentTarget.value = "";
+                    }}
+                  />
+
+                  <input
+                    ref={receiptFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && uploadTargetIndex !== null) {
+                        handleFile(file, uploadTargetIndex, "receipt");
                       }
                       e.currentTarget.value = "";
                     }}
@@ -996,7 +1095,7 @@ export function SalesForm({
           <div className="fixed inset-0 z-[120] grid place-items-end bg-black/90 p-0 sm:place-items-center sm:p-4">
             <div className="h-[92vh] w-full rounded-t-3xl border border-line bg-bg p-3 sm:h-auto sm:max-h-[94vh] sm:max-w-4xl sm:rounded-3xl sm:p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-text">Обрезка скрина товара</p>
+              <p className="text-sm font-semibold text-text">Обрезка изображения</p>
               <button
                 type="button"
                 className="rounded-lg p-1 text-muted transition hover:bg-card hover:text-text"

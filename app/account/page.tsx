@@ -135,6 +135,7 @@ export default async function AccountPage() {
             orderDate: sale.orderDate ? sale.orderDate.toISOString() : null,
             paymentDate: sale.paymentDate ? sale.paymentDate.toISOString() : null,
             screenshotData: sale.screenshotData,
+            receiptData: sale.receiptData,
             size: sale.size,
             quantity: sale.quantity,
             costPriceCny: sale.costPriceCny.toString(),

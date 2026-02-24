@@ -15,6 +15,7 @@ type SaleRow = {
   orderDate: string | null;
   paymentDate: string | null;
   screenshotData: string | null;
+  receiptData: string | null;
   size: string | null;
   quantity: number;
   costPriceCny: string;
@@ -157,6 +158,7 @@ export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
                                 orderDate: sale.orderDate,
                                 paymentDate: sale.paymentDate,
                                 screenshotData: sale.screenshotData,
+                                receiptData: sale.receiptData,
                                 size: sale.size,
                                 quantity: sale.quantity,
                                 costPriceCny: sale.costPriceCny,
@@ -219,6 +221,7 @@ export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
                   orderDate: selectedSale.orderDate,
                   paymentDate: selectedSale.paymentDate,
                   screenshotData: selectedSale.screenshotData,
+                  receiptData: selectedSale.receiptData,
                   size: selectedSale.size,
                   quantity: selectedSale.quantity,
                   costPriceCny: selectedSale.costPriceCny,

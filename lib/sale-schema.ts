@@ -26,6 +26,7 @@ export const saleSchema = z.object({
   orderDate: optionalDateString,
   paymentDate: optionalDateString,
   screenshotData: z.string().optional().or(z.literal("")),
+  receiptData: z.string().optional().or(z.literal("")),
   size: z.string().trim().optional().or(z.literal("")),
   status: z.enum(["DONE", "TODO"]).optional().default("TODO"),
   quantity: z.coerce.number().int().min(0).default(1),
