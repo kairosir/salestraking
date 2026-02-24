@@ -6,6 +6,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import { ChevronDown, FileImage, Loader2, Pencil, Plus, Upload, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { createSaleAction, updateSaleAction } from "@/app/actions";
+import { useModalHistory } from "@/lib/use-modal-history";
 
 type SaleRow = {
   id: string;
@@ -149,6 +150,8 @@ async function getCroppedDataUrl(imageSrc: string, cropPixels: CropPixels, rende
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Не удалось подготовить изображение");
 
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, srcW, srcH);
   ctx.drawImage(image, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
 
   return encodeCanvasToTargetSize(canvas, MAX_IMAGE_BYTES);
@@ -263,7 +266,8 @@ function ItemEditor({
   receipts,
   onSelectReceipt,
   onEditReceipt,
-  onRemoveReceipt
+  onRemoveReceipt,
+  onPreviewImage
 }: {
   item: FormLineItem;
   index: number;
@@ -280,6 +284,7 @@ function ItemEditor({
   onSelectReceipt: (index: number) => void;
   onEditReceipt: (index: number, shotIndex: number) => void;
   onRemoveReceipt: (index: number, shotIndex: number) => void;
+  onPreviewImage: (src: string, title: string) => void;
 }) {
   const qty = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
   const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT * qty;
@@ -435,7 +440,9 @@ function ItemEditor({
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {screenshots.map((shot, shotIndex) => (
                     <div key={`shot-${index}-${shotIndex}`} className="overflow-hidden rounded-xl border border-line bg-bg">
+                      <button type="button" onClick={() => onPreviewImage(shot, `Скрин товара ${shotIndex + 1}`)} className="w-full">
                       <img src={shot} alt={`Скрин товара ${shotIndex + 1}`} className="h-28 w-full object-cover" />
+                    </button>
                       <div className="grid grid-cols-2 gap-1 border-t border-line p-1.5">
                         <button
                           type="button"
@@ -483,7 +490,9 @@ function ItemEditor({
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {receipts.map((shot, shotIndex) => (
                     <div key={`receipt-${index}-${shotIndex}`} className="overflow-hidden rounded-xl border border-line bg-bg">
+                      <button type="button" onClick={() => onPreviewImage(shot, `Скрин чека ${shotIndex + 1}`)} className="w-full">
                       <img src={shot} alt={`Скрин чека ${shotIndex + 1}`} className="h-28 w-full object-cover" />
+                    </button>
                       <div className="grid grid-cols-2 gap-1 border-t border-line p-1.5">
                         <button
                           type="button"
@@ -576,6 +585,7 @@ export function SalesForm({
   });
   const [cropPixels, setCropPixels] = useState<PixelCrop | null>(null);
   const [cropPending, setCropPending] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
 
   const totals = useMemo(() => {
     const costKzt = lineItems.reduce((sum, item) => {
@@ -680,8 +690,7 @@ export function SalesForm({
         persistDraft({ lineItems: next });
         return next;
       });
-      setCropSource("");
-      setCropTarget(null);
+      closeCropModal();
       setError(null);
     } catch {
       setError("Не удалось обрезать изображение");
@@ -759,7 +768,7 @@ export function SalesForm({
         }
       }
 
-      setOpen(false);
+      closeFormModal();
     });
   };
 
@@ -786,6 +795,19 @@ export function SalesForm({
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  const closeFormModal = useModalHistory(open && mounted, () => setOpen(false));
+  const closeCropModal = useModalHistory(Boolean(cropSource && mounted), () => {
+    setCropSource("");
+    setCropTarget(null);
+  });
+  const closePreviewModal = useModalHistory(Boolean(previewImage && mounted), () => setPreviewImage(null));
+
+  const applyDateValue = (nextValue: string, key: "orderDate" | "paymentDate") => {
+    if (key === "orderDate") setOrderDate(nextValue);
+    if (key === "paymentDate") setPaymentDate(nextValue);
+    persistDraft({ [key]: nextValue });
+  };
 
   return (
     <>
@@ -827,7 +849,7 @@ export function SalesForm({
                   <p className="mt-1 text-sm text-muted">Клиент и несколько товаров в одном добавлении</p>
                 </div>
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={closeFormModal}
                   className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text"
                   type="button"
                   aria-label="Закрыть"
@@ -849,10 +871,9 @@ export function SalesForm({
                       type="date"
                       name="orderDate"
                       value={orderDate}
-                      onChange={(e) => {
-                        setOrderDate(e.target.value);
-                        persistDraft({ orderDate: e.target.value });
-                      }}
+                      onInput={(e) => applyDateValue(e.currentTarget.value, "orderDate")}
+                      onChange={(e) => applyDateValue(e.target.value, "orderDate")}
+                      onClick={(e) => e.currentTarget.showPicker?.()}
                     />
                   </div>
                   <div>
@@ -862,10 +883,9 @@ export function SalesForm({
                       type="date"
                       name="paymentDate"
                       value={paymentDate}
-                      onChange={(e) => {
-                        setPaymentDate(e.target.value);
-                        persistDraft({ paymentDate: e.target.value });
-                      }}
+                      onInput={(e) => applyDateValue(e.currentTarget.value, "paymentDate")}
+                      onChange={(e) => applyDateValue(e.target.value, "paymentDate")}
+                      onClick={(e) => e.currentTarget.showPicker?.()}
                     />
                   </div>
                 </div>
@@ -995,6 +1015,7 @@ export function SalesForm({
                             return next;
                           });
                         }}
+                        onPreviewImage={(src, title) => setPreviewImage({ src, title })}
                       />
                     ))}
                   </div>
@@ -1069,7 +1090,7 @@ export function SalesForm({
                 <div className="grid grid-cols-2 gap-3 border-t border-line pt-4">
                   <button
                     type="button"
-                    onClick={() => setOpen(false)}
+                    onClick={closeFormModal}
                     className="h-11 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
                   >
                     Отмена
@@ -1090,24 +1111,41 @@ export function SalesForm({
           </div>
         , document.body)}
 
+
+      {previewImage && mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-[130] grid place-items-center bg-black/90 p-2 sm:p-4">
+            <div className="relative w-full max-w-5xl overflow-hidden rounded-2xl border border-line bg-bg p-2 sm:p-3">
+              <button
+                type="button"
+                onClick={closePreviewModal}
+                className="absolute right-2 top-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-card text-text"
+                aria-label="Закрыть"
+              >
+                <X size={16} />
+              </button>
+              <img src={previewImage.src} alt={previewImage.title} className="mx-auto max-h-[84dvh] w-auto max-w-full object-contain" />
+            </div>
+          </div>
+        , document.body)}
+
       {cropSource && mounted &&
         createPortal(
-          <div className="fixed inset-0 z-[120] grid place-items-end bg-black/90 p-0 sm:place-items-center sm:p-4">
-            <div className="h-[92vh] w-full rounded-t-3xl border border-line bg-bg p-3 sm:h-auto sm:max-h-[94vh] sm:max-w-4xl sm:rounded-3xl sm:p-4">
+          <div className="fixed inset-0 z-[120] bg-black/90 p-2 sm:grid sm:place-items-center sm:p-4">
+            <div className="mx-auto flex h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-line bg-bg p-3 sm:h-auto sm:max-h-[94vh] sm:rounded-3xl sm:p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold text-text">Обрезка изображения</p>
               <button
                 type="button"
                 className="rounded-lg p-1 text-muted transition hover:bg-card hover:text-text"
                 onClick={() => {
-                  setCropSource("");
-                  setCropTarget(null);
+                  closeCropModal();
                 }}
               >
                 <X size={18} />
               </button>
             </div>
-            <div className="max-h-[76vh] overflow-auto rounded-xl bg-black p-2">
+            <div className="min-h-0 flex-1 overflow-auto rounded-xl bg-black p-2">
               <ReactCrop
                 crop={crop}
                 onChange={(nextCrop) => setCrop(nextCrop)}
@@ -1120,7 +1158,7 @@ export function SalesForm({
                   src={cropSource}
                   alt="Обрезка"
                   onLoad={handleCropImageLoad}
-                  className="max-h-[72vh] w-auto max-w-full object-contain"
+                  className="mx-auto max-h-[68vh] w-auto max-w-full object-contain sm:max-h-[72vh]"
                 />
               </ReactCrop>
             </div>
@@ -1128,8 +1166,7 @@ export function SalesForm({
               <button
                 type="button"
                 onClick={() => {
-                  setCropSource("");
-                  setCropTarget(null);
+                  closeCropModal();
                 }}
                 className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
               >

@@ -23,6 +23,7 @@ import {
   restoreSalesFromTrashAction
 } from "@/app/actions";
 import { SalesForm } from "@/components/sales-form";
+import { useModalHistory } from "@/lib/use-modal-history";
 
 type Sale = {
   id: string;
@@ -210,6 +211,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
   const [expandedArchiveGroups, setExpandedArchiveGroups] = useState<Record<string, boolean>>({});
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<Record<string, boolean>>({});
   const [selectedTrashIds, setSelectedTrashIds] = useState<Record<string, boolean>>({});
+  const [imagePreview, setImagePreview] = useState<{ src: string; title: string } | null>(null);
+
+  const closeDetailsModal = useModalHistory(Boolean(selectedSale), () => setSelectedSale(null));
+  const closeTrashConfirmModal = useModalHistory(Boolean(trashTargetSale), () => setTrashTargetSale(null));
+  const closeArchiveModal = useModalHistory(archiveOpen, () => setArchiveOpen(false));
+  const closeTrashModal = useModalHistory(trashOpen, () => setTrashOpen(false));
+  const closeImagePreviewModal = useModalHistory(Boolean(imagePreview), () => setImagePreview(null));
 
   const [pendingAction, startPendingAction] = useTransition();
   const [markingDone, startMarkingDone] = useTransition();
@@ -228,7 +236,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       fd.set("id", target.id);
       const result = await moveSaleToTrashAction(fd);
       if (result.ok) {
-        if (selectedSale?.id === target.id) setSelectedSale(null);
+        if (selectedSale?.id === target.id) closeDetailsModal();
         setTrashTargetSale(null);
         router.refresh();
       }
@@ -729,7 +737,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 <h3 className="text-xl font-semibold text-text">Карточка товара</h3>
                 <p className="text-sm text-muted">Полная информация</p>
               </div>
-              <button type="button" onClick={() => setSelectedSale(null)} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
+              <button type="button" onClick={closeDetailsModal} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
                 <X size={20} />
               </button>
             </div>
@@ -780,7 +788,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {selectedScreenshots.map((shot, idx) => (
                   <div key={`selected-shot-${idx}`} className="overflow-hidden rounded-2xl border border-line">
-                    <img src={shot} alt={`Скрин товара ${idx + 1}`} className="max-h-[320px] w-full object-contain bg-card" />
+                    <button
+                      type="button"
+                      onClick={() => setImagePreview({ src: shot, title: `Скрин товара ${idx + 1}` })}
+                      className="w-full"
+                    >
+                      <img src={shot} alt={`Скрин товара ${idx + 1}`} className="max-h-[320px] w-full object-contain bg-card" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -790,7 +804,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {selectedReceipts.map((shot, idx) => (
                   <div key={`selected-receipt-${idx}`} className="overflow-hidden rounded-2xl border border-line">
-                    <img src={shot} alt={`Скрин чека ${idx + 1}`} className="max-h-[320px] w-full object-contain bg-card" />
+                    <button
+                      type="button"
+                      onClick={() => setImagePreview({ src: shot, title: `Скрин чека ${idx + 1}` })}
+                      className="w-full"
+                    >
+                      <img src={shot} alt={`Скрин чека ${idx + 1}`} className="max-h-[320px] w-full object-contain bg-card" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -819,7 +839,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             <div className="mt-4 grid grid-cols-1 gap-2 border-t border-line pt-4 sm:grid-cols-3">
               <button
                 type="button"
-                onClick={() => setSelectedSale(null)}
+                onClick={closeDetailsModal}
                 className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
               >
                 Закрыть
@@ -841,7 +861,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                   startMarkingDone(async () => {
                     const result = await markSaleDoneAction(selectedSale.id);
                     if (!result.ok) return;
-                    setSelectedSale(null);
+                    closeDetailsModal();
                     router.refresh();
                   });
                 }}
@@ -856,6 +876,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
       )}
 
       {trashTargetSale && (
+
         <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-4">
           <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-4">
             <h4 className="text-base font-semibold text-text">Переместить в корзину?</h4>
@@ -868,7 +889,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setTrashTargetSale(null)}
+                onClick={closeTrashConfirmModal}
                 className="h-10 rounded-xl border border-line bg-card text-sm text-text transition hover:border-accent"
               >
                 Отмена
@@ -906,6 +927,22 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
         <SalesForm iconOnly iconOnlySmall />
       </div>
 
+      {imagePreview && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/90 p-3 sm:p-4">
+          <div className="relative w-full max-w-5xl overflow-hidden rounded-2xl border border-line bg-bg p-2 sm:p-3">
+            <button
+              type="button"
+              onClick={closeImagePreviewModal}
+              className="absolute right-2 top-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-card text-text"
+              aria-label="Закрыть"
+            >
+              <X size={16} />
+            </button>
+            <img src={imagePreview.src} alt={imagePreview.title} className="mx-auto max-h-[82dvh] w-auto max-w-full object-contain" />
+          </div>
+        </div>
+      )}
+
       {archiveOpen && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
           <div className="h-[86vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-3xl sm:rounded-3xl sm:p-6">
@@ -914,7 +951,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 <h3 className="text-xl font-semibold text-text">Архив</h3>
                 <p className="text-sm text-muted">Выданные товары с группировкой по клиенту</p>
               </div>
-              <button type="button" onClick={() => setArchiveOpen(false)} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
+              <button type="button" onClick={closeArchiveModal} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
                 <X size={20} />
               </button>
             </div>
@@ -1070,7 +1107,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                 <h3 className="text-xl font-semibold text-text">Корзина</h3>
                 <p className="text-sm text-muted">Удаленные карточки сначала попадают сюда</p>
               </div>
-              <button type="button" onClick={() => setTrashOpen(false)} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
+              <button type="button" onClick={closeTrashModal} className="rounded-xl p-2 text-muted transition hover:bg-card hover:text-text">
                 <X size={20} />
               </button>
             </div>

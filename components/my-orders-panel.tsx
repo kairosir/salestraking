@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import { SalesForm } from "@/components/sales-form";
+import { useModalHistory } from "@/lib/use-modal-history";
 
 type SaleRow = {
   id: string;
@@ -56,6 +57,7 @@ export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selectedSale, setSelectedSale] = useState<SaleRow | null>(null);
+  const closeSelectedSaleModal = useModalHistory(Boolean(selectedSale), () => setSelectedSale(null));
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -188,7 +190,7 @@ export function MyOrdersPanel({ sales }: { sales: SaleRow[] }) {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedSale(null)}
+                onClick={closeSelectedSaleModal}
                 className="rounded-xl border border-line px-3 py-1 text-sm text-muted transition hover:border-accent hover:text-text"
               >
                 Закрыть
