@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Bell, TriangleAlert, X } from "lucide-react";
 import { createPortal } from "react-dom";
 
+export const OPEN_SALE_FROM_NOTIFICATION_EVENT = "open-sale-from-notification";
+
 type SaleForNotice = {
   id: string;
   clientName: string;
@@ -25,7 +27,10 @@ function parseTrackCodes(raw: string | null | undefined): string[] {
       // ignore
     }
   }
-  return trimmed.split(/[\n,;]/g).map((item) => item.trim()).filter(Boolean);
+  return trimmed
+    .split(/[\n,;]/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function NotificationsCenter({ sales }: { sales: SaleForNotice[] }) {
@@ -40,22 +45,41 @@ export function NotificationsCenter({ sales }: { sales: SaleForNotice[] }) {
 
   const items = useMemo(() => {
     const active = sales.filter((sale) => sale.status !== "WAITING");
-    return active
-      .map((sale) => {
-        const missingTrack = parseTrackCodes(sale.productId).length === 0;
-        const needTodo = sale.status !== "DONE";
-        if (!missingTrack && !needTodo) return null;
-        return {
-          ...sale,
+    const grouped = new Map<string, {
+      id: string;
+      clientName: string;
+      clientPhone: string;
+      productName: string;
+      missingTrack: boolean;
+      needTodo: boolean;
+    }>();
+
+    for (const sale of active) {
+      const missingTrack = parseTrackCodes(sale.productId).length === 0;
+      const needTodo = sale.status !== "DONE";
+      if (!missingTrack && !needTodo) continue;
+
+      const existing = grouped.get(sale.id);
+      if (!existing) {
+        grouped.set(sale.id, {
+          id: sale.id,
+          clientName: sale.clientName,
+          clientPhone: sale.clientPhone,
+          productName: sale.productName,
           missingTrack,
-          needTodo,
-          count: Number(missingTrack) + Number(needTodo)
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+          needTodo
+        });
+        continue;
+      }
+
+      existing.missingTrack = existing.missingTrack || missingTrack;
+      existing.needTodo = existing.needTodo || needTodo;
+    }
+
+    return Array.from(grouped.values());
   }, [sales]);
 
-  const badgeCount = useMemo(() => items.reduce((sum, item) => sum + item.count, 0), [items]);
+  const badgeCount = items.length;
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && "setAppBadge" in navigator) {
@@ -75,7 +99,7 @@ export function NotificationsCenter({ sales }: { sales: SaleForNotice[] }) {
       .slice(0, 3)
       .map((item) => `${item.clientName}: ${item.productName}`)
       .join("\n");
-    const key = `salestraking-notice-${badgeCount}-${items.length}`;
+    const key = `salestraking-notice-${items.map((i) => i.id).join("|")}`;
     if (window.sessionStorage.getItem(key)) return;
     window.sessionStorage.setItem(key, "1");
     try {
@@ -83,12 +107,22 @@ export function NotificationsCenter({ sales }: { sales: SaleForNotice[] }) {
     } catch {
       // ignore
     }
-  }, [systemEnabled, items, badgeCount]);
+  }, [systemEnabled, items]);
 
   const enableSystem = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     const perm = await Notification.requestPermission();
     setSystemEnabled(perm === "granted");
+  };
+
+  const openSaleFromNotification = (saleId: string) => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent(OPEN_SALE_FROM_NOTIFICATION_EVENT, {
+        detail: { saleId }
+      })
+    );
+    setOpen(false);
   };
 
   return (
@@ -108,7 +142,8 @@ export function NotificationsCenter({ sales }: { sales: SaleForNotice[] }) {
         )}
       </button>
 
-      {open && mounted &&
+      {open &&
+        mounted &&
         createPortal(
           <div className="fixed inset-0 z-[95] grid place-items-end bg-black/75 p-0 sm:place-items-center sm:p-4">
             <div className="h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-bg p-4 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl sm:p-6">
@@ -135,7 +170,12 @@ export function NotificationsCenter({ sales }: { sales: SaleForNotice[] }) {
               <div className="space-y-2">
                 {items.length === 0 && <p className="text-sm text-muted">Критичных уведомлений нет.</p>}
                 {items.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-line bg-card p-3">
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openSaleFromNotification(item.id)}
+                    className="w-full rounded-xl border border-line bg-card p-3 text-left transition hover:border-accent"
+                  >
                     <p className="text-sm font-semibold text-red-400">ВАЖНО:</p>
                     <p className="text-sm text-text">{item.clientName} · {item.clientPhone || "-"}</p>
                     <p className="text-sm text-text">{item.productName}</p>
@@ -143,7 +183,7 @@ export function NotificationsCenter({ sales }: { sales: SaleForNotice[] }) {
                       {item.needTodo && <span className="rounded-lg border border-red-400/60 bg-red-500/20 px-2 py-1 text-xs text-red-200">Доделать</span>}
                       {item.missingTrack && <span className="rounded-lg border border-amber-400/60 bg-amber-500/20 px-2 py-1 text-xs text-amber-100">Добавить трек код</span>}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

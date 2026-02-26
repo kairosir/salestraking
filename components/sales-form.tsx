@@ -555,7 +555,8 @@ export function SalesForm({
   compactVariant = "default",
   iconOnly,
   iconOnlySmall,
-  initialClient
+  initialClient,
+  onAfterClose
 }: {
   sale?: SaleRow;
   compact?: boolean;
@@ -563,6 +564,7 @@ export function SalesForm({
   iconOnly?: boolean;
   iconOnlySmall?: boolean;
   initialClient?: { clientName?: string; clientPhone?: string };
+  onAfterClose?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -825,7 +827,10 @@ export function SalesForm({
     return () => setMounted(false);
   }, []);
 
-  const closeFormModal = useModalHistory(open && mounted, () => setOpen(false));
+  const closeFormModal = useModalHistory(open && mounted, () => {
+    setOpen(false);
+    onAfterClose?.();
+  });
   const closeCropModal = useModalHistory(Boolean(cropSource && mounted), () => {
     setCropSource("");
     setCropTarget(null);
@@ -845,7 +850,7 @@ export function SalesForm({
         onClick={handleOpen}
         className={
           compact
-            ? "inline-flex h-9 items-center gap-1 rounded-xl border border-line bg-card px-2 text-xs font-semibold text-text transition hover:border-accent"
+            ? "inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-line bg-card px-3 text-xs font-semibold text-text transition hover:border-accent"
             : iconOnly
               ? iconOnlySmall
                 ? "btn-primary inline-flex h-11 w-11 items-center justify-center rounded-full shadow-glow transition"
@@ -856,7 +861,7 @@ export function SalesForm({
         {sale ? <Pencil size={14} /> : <Plus size={iconOnlySmall ? 15 : 16} />}
         {compact
           ? sale
-            ? ""
+            ? "Изменить"
             : compactVariant === "plus"
               ? ""
               : "Добав"

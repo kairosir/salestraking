@@ -7,7 +7,7 @@ function generateMarker() {
 }
 
 export function useModalHistory(open: boolean, onRequestClose: () => void) {
-  const activeMarkerRef = useRef<string | null>(null);
+  const topMarkerRef = useRef<string | null>(null);
   const closeRef = useRef(onRequestClose);
 
   useEffect(() => {
@@ -17,16 +17,22 @@ export function useModalHistory(open: boolean, onRequestClose: () => void) {
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
 
-    const marker = generateMarker();
-    const state = { ...(window.history.state || {}), __modalMarker: marker };
-    window.history.pushState(state, "");
-    activeMarkerRef.current = marker;
+    const baseMarker = generateMarker();
+    const topMarker = generateMarker();
+    const currentState = window.history.state || {};
+
+    // Two entries guarantee that one browser-back closes modal first,
+    // without jumping to the previous page route.
+    window.history.pushState({ ...currentState, __modalBase: baseMarker }, "");
+    window.history.pushState({ ...currentState, __modalBase: baseMarker, __modalTop: topMarker }, "");
+    topMarkerRef.current = topMarker;
 
     const onPopState = (event: PopStateEvent) => {
-      const markerInState = event.state?.__modalMarker ?? null;
-      if (markerInState === activeMarkerRef.current) return;
-      if (!activeMarkerRef.current) return;
-      activeMarkerRef.current = null;
+      if (!topMarkerRef.current) return;
+      const markerInState = event.state?.__modalTop ?? null;
+      if (markerInState === topMarkerRef.current) return;
+
+      topMarkerRef.current = null;
       closeRef.current();
     };
 
@@ -42,14 +48,14 @@ export function useModalHistory(open: boolean, onRequestClose: () => void) {
       return;
     }
 
-    const marker = activeMarkerRef.current;
-    const currentMarker = window.history.state?.__modalMarker ?? null;
+    const marker = topMarkerRef.current;
+    const currentMarker = window.history.state?.__modalTop ?? null;
     if (marker && marker === currentMarker) {
       window.history.back();
       return;
     }
 
-    activeMarkerRef.current = null;
+    topMarkerRef.current = null;
     onRequestClose();
   }, [onRequestClose]);
 }

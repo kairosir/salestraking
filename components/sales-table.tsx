@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Archive,
   Check,
@@ -24,7 +24,7 @@ import {
 } from "@/app/actions";
 import { SalesForm } from "@/components/sales-form";
 import { useModalHistory } from "@/lib/use-modal-history";
-import { MissingTrackAlert } from "@/components/notifications-center";
+import { MissingTrackAlert, OPEN_SALE_FROM_NOTIFICATION_EVENT } from "@/components/notifications-center";
 
 type Sale = {
   id: string;
@@ -286,6 +286,23 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
     await loadScreenshot(sale.id);
   };
 
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ saleId?: string }>;
+      const saleId = custom.detail?.saleId;
+      if (!saleId) return;
+      const target = sales.find((item) => item.id === saleId);
+      if (!target) return;
+      void openSaleDetails(target);
+    };
+
+    window.addEventListener(OPEN_SALE_FROM_NOTIFICATION_EVENT, handler as EventListener);
+    return () => {
+      window.removeEventListener(OPEN_SALE_FROM_NOTIFICATION_EVENT, handler as EventListener);
+    };
+  }, [sales]);
   const authors = useMemo(() => {
     const unique = Array.from(new Set(sales.map((s) => s.createdByName))).sort((a, b) => a.localeCompare(b, "ru"));
     return unique;
@@ -490,7 +507,6 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                       <p className="inline-flex items-center gap-2 text-sm font-semibold text-text">
                         <span className={`h-2.5 w-2.5 rounded-full ${clientDotColor(group.key)}`} />
                         {group.clientName}
-                        <MissingTrackAlert productId={group.sales.some((sale) => !sale.productId) ? "" : "ok"} />
                       </p>
                       <div className="flex items-center gap-1.5">
                         <p className="text-xs text-text">{group.clientPhone || "-"}</p>
@@ -590,7 +606,6 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                   <p className="inline-flex items-center gap-2 text-base font-semibold text-text">
                     <span className={`h-2.5 w-2.5 rounded-full ${clientDotColor(group.key)}`} />
                     {group.clientName}
-                    <MissingTrackAlert productId={group.sales.some((sale) => !sale.productId) ? "" : "ok"} />
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="text-xs text-muted">{group.clientPhone}</p>
@@ -628,7 +643,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                         <div className="flex items-start gap-2">
                           <span className={`mt-1 h-6 w-1.5 shrink-0 rounded-full ${statusColor(sale.status)}`} />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-text">{sale.productName}</p>
+                            <p className="inline-flex items-center gap-1 text-sm text-text">{sale.productName} {!sale.productId && <MissingTrackAlert productId={sale.productId} />}</p>
                             <p className="text-xs text-muted">{dateFmt(sale.createdAt)}</p>
                           </div>
                         </div>
@@ -809,6 +824,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             <div className="mt-4 grid grid-cols-1 gap-2 border-t border-line pt-4 sm:grid-cols-3">
               <SalesForm
                 compact
+                onAfterClose={() => setSelectedSale(null)}
                 sale={{
                   id: selectedSale.id,
                   orderId: selectedSale.orderId,
