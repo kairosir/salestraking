@@ -296,7 +296,7 @@ function ItemEditor({
   onPreviewImage: (src: string, title: string) => void;
 }) {
   const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
-  const margin = (parseFlexibleNumber(item.salePrice) - costKzt) - ((parseFlexibleNumber(item.salePrice) - costKzt) * 0.05);
+  const margin = (parseFlexibleNumber(item.salePrice) - costKzt) * 0.05;
   const trackCodes = parseTrackCodes(item.productId);
 
   return (
@@ -628,7 +628,7 @@ export function SalesForm({
     const marginWithFee = lineItems.reduce((sum, item) => {
       const itemCostKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
       const itemSale = parseFlexibleNumber(item.salePrice);
-      return sum + (itemSale - itemCostKzt) - ((itemSale - itemCostKzt) * 0.05);
+      return sum + (itemSale - itemCostKzt) * 0.05;
     }, 0);
 
     return {
