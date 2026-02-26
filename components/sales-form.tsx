@@ -87,6 +87,10 @@ function parseFlexibleNumber(value: string) {
   return Number.isFinite(num) ? num : 0;
 }
 
+function calculateMargin(salePrice: number, costPriceCny: number) {
+  return (salePrice - (costPriceCny * CNY_TO_KZT)) * 0.95;
+}
+
 function toDateInputValue(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -295,8 +299,9 @@ function ItemEditor({
   onRemoveReceipt: (index: number, shotIndex: number) => void;
   onPreviewImage: (src: string, title: string) => void;
 }) {
-  const costKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
-  const margin = (parseFlexibleNumber(item.salePrice) - costKzt) * 0.95;
+  const salePrice = parseFlexibleNumber(item.salePrice);
+  const costPriceCny = parseFlexibleNumber(item.costPriceCny);
+  const margin = calculateMargin(salePrice, costPriceCny);
   const trackCodes = parseTrackCodes(item.productId);
 
   return (
@@ -626,9 +631,9 @@ export function SalesForm({
     }, 0);
 
     const marginWithFee = lineItems.reduce((sum, item) => {
-      const itemCostKzt = parseFlexibleNumber(item.costPriceCny) * CNY_TO_KZT;
       const itemSale = parseFlexibleNumber(item.salePrice);
-      return sum + (itemSale - itemCostKzt) * 0.95;
+      const itemCostPriceCny = parseFlexibleNumber(item.costPriceCny);
+      return sum + calculateMargin(itemSale, itemCostPriceCny);
     }, 0);
 
     return {
