@@ -51,7 +51,7 @@ function parseFlexibleNumber(value: unknown) {
 }
 
 function calculateMargin(salePrice: number, costPriceCny: number) {
-  return salePrice - (costPriceCny * CNY_TO_KZT) - (salePrice * 0.05);
+  return (salePrice - (costPriceCny * CNY_TO_KZT)) * 0.95;
 }
 
 type SaleLineItem = {
