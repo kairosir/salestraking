@@ -14,7 +14,7 @@ function money(value: number) {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(sign * rounded) + " ₸";
 }
 
-type CalcSale = { createdAt: string; margin: number };
+type CalcSale = { paymentDate: string | null; margin: number };
 
 export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: number; sales: CalcSale[] }) {
   const [open, setOpen] = useState(false);
@@ -32,9 +32,9 @@ export function CalculationCard({ totalNetMargin, sales }: { totalNetMargin: num
     if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return totalNetMargin;
 
     return sales.reduce((sum, sale) => {
-      const created = new Date(sale.createdAt).getTime();
-      if (!Number.isFinite(created)) return sum;
-      if (created < fromMs || created > toMs) return sum;
+      const paymentMs = sale.paymentDate ? new Date(sale.paymentDate).getTime() : NaN;
+      if (!Number.isFinite(paymentMs)) return sum;
+      if (paymentMs < fromMs || paymentMs > toMs) return sum;
       return sum + (Number.isFinite(sale.margin) ? sale.margin : 0);
     }, 0);
   }, [fromDate, toDate, sales, totalNetMargin]);

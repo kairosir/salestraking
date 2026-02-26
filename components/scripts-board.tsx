@@ -159,7 +159,7 @@ export function ScriptsBoard({ scripts }: { scripts: ScriptItem[] }) {
                     >
                       <div className="min-w-0">
                         <p className="text-xs text-muted">Вопрос клиента</p>
-                        <p className="truncate text-sm text-text">{item.question}</p>
+                        <p className="whitespace-pre-wrap break-words text-sm text-text">{item.question}</p>
                       </div>
                       {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
                     </button>

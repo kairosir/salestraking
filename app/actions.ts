@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { compare, hash } from "bcryptjs";
 import { auth, signIn, signOut } from "@/lib/auth";
@@ -54,6 +55,8 @@ type SaleLineItem = {
   productId: string | null;
   productLink: string | null;
   size: string | null;
+  color: string | null;
+  status: SaleStatus;
   quantity: number;
   costPriceCny: number;
   salePrice: number;
@@ -94,8 +97,10 @@ function parseLineItems(raw: unknown): SaleLineItem[] {
         const rawProductId = normalizeOptionalString(item.productId);
         const rawProductLink = normalizeOptionalString(item.productLink);
         const rawSize = normalizeOptionalString(item.size);
+        const rawColor = normalizeOptionalString(item.color);
         const rawScreenshot = normalizeOptionalString(item.screenshotData);
         const rawReceipt = normalizeOptionalString(item.receiptData);
+        const status = normalizeStatus(item.status);
         const quantity = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
         const costPriceCny = Math.max(0, parseFlexibleNumber(item.costPriceCny));
         const salePrice = Math.max(0, parseFlexibleNumber(item.salePrice));
@@ -104,6 +109,8 @@ function parseLineItems(raw: unknown): SaleLineItem[] {
           productId: rawProductId,
           productLink: rawProductLink,
           size: rawSize,
+          color: rawColor,
+          status,
           quantity,
           costPriceCny,
           salePrice,
@@ -123,6 +130,14 @@ function parseIds(raw: unknown) {
   if (typeof raw !== "string") return [];
   return raw
     .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseStringList(raw: unknown) {
+  if (typeof raw !== "string") return [];
+  return raw
+    .split(/\n|,/g)
     .map((item) => item.trim())
     .filter(Boolean);
 }
@@ -187,13 +202,16 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const clientName = String(formData.get("clientName") ?? "").trim() || "Без имени";
     const clientPhone = String(formData.get("clientPhone") ?? "").trim();
     const paidTo = normalizeOptionalString(formData.get("paidTo"));
+    const orderComment = normalizeOptionalString(formData.get("orderComment"));
     const status = normalizeStatus(formData.get("status"));
+    const orderStatus = normalizeStatus(formData.get("orderStatus"));
     const orderDate = parseDate(normalizeOptionalDateString(formData.get("orderDate")));
     const paymentDate = parseDate(normalizeOptionalDateString(formData.get("paymentDate")));
     const screenshotDataRaw = normalizeOptionalString(formData.get("screenshotData")) ?? "";
     const receiptDataRaw = normalizeOptionalString(formData.get("receiptData")) ?? "";
     const lineItems = parseLineItems(formData.get("lineItems"));
     const trackingFirstCheckAt = addDays(new Date(), TRACKING_FIRST_CHECK_DAYS);
+    const batchOrderId = normalizeOptionalString(formData.get("orderId")) ?? randomUUID();
 
     if (screenshotDataRaw !== "__KEEP__" && !isScreenshotPayloadValid(screenshotDataRaw)) {
       return { ok: false, error: "Скрин товара слишком большой. Выберите более легкий файл." };
@@ -207,10 +225,12 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       clientName,
       clientPhone,
       paidTo,
+      orderComment,
       orderDate,
       paymentDate,
       screenshotData: screenshotDataRaw && screenshotDataRaw !== "__KEEP__" ? screenshotDataRaw : null,
       receiptData: receiptDataRaw && receiptDataRaw !== "__KEEP__" ? receiptDataRaw : null,
+      orderStatus,
       status,
       isIssued: false,
       createdById: session.user.id,
@@ -247,14 +267,18 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
               trackingArrivedAt: null,
               trackingLastChangedAt: null,
               trackingRaw: Prisma.DbNull,
+              orderId: batchOrderId,
               productName: item.productName,
               productLink: item.productLink,
               size: item.size,
+              color: item.color,
               quantity: item.quantity,
               costPriceCny: item.costPriceCny,
               costPrice,
               salePrice: item.salePrice,
-              margin
+              margin,
+              status: item.status,
+              orderStatus
             }
           });
         })
@@ -273,6 +297,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         receiptData: formData.get("receiptData"),
         size: formData.get("size"),
         status,
+        orderStatus: formData.get("orderStatus"),
         quantity: formData.get("quantity"),
         costPriceCny: formData.get("costPriceCny"),
         salePrice: formData.get("salePrice")
@@ -285,8 +310,11 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       const data = parsed.data as Record<string, unknown>;
       const productName = String(data.productName ?? "").trim() || "Без товара";
       const productId = normalizeOptionalString(data.productId);
+      const orderId = batchOrderId;
       const productLink = normalizeOptionalString(data.productLink);
       const size = normalizeOptionalString(data.size);
+      const color = normalizeOptionalString(formData.get("color"));
+      const orderStatus = normalizeStatus(data.orderStatus);
       const costPriceCny = Number(data.costPriceCny);
       const salePrice = Number(data.salePrice);
       const quantity = Math.max(1, Number(data.quantity) || 1);
@@ -308,14 +336,17 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
           trackingArrivedAt: null,
           trackingLastChangedAt: null,
           trackingRaw: Prisma.DbNull,
+          orderId,
           productName,
           productLink,
           size,
+          color,
           quantity,
           costPriceCny,
           costPrice,
           salePrice,
-          margin
+          margin,
+          orderStatus
         }
       });
     }
@@ -408,7 +439,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     if (!id) return { ok: false, error: "Не найден id записи" };
     const existingSale = await prisma.sale.findUnique({
       where: { id },
-      select: { productId: true }
+      select: { productId: true, orderId: true }
     });
     if (!existingSale) return { ok: false, error: "Запись не найдена" };
 
@@ -424,7 +455,9 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       screenshotData: formData.get("screenshotData"),
       receiptData: formData.get("receiptData"),
       size: formData.get("size"),
+      color: formData.get("color"),
       status: formData.get("status"),
+      orderStatus: formData.get("orderStatus"),
       quantity: formData.get("quantity"),
       costPriceCny: formData.get("costPriceCny"),
       salePrice: formData.get("salePrice")
@@ -443,7 +476,10 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const productLink = normalizeOptionalString(data.productLink);
     const paidTo = normalizeOptionalString(data.paidTo);
     const size = normalizeOptionalString(data.size);
+    const color = normalizeOptionalString(data.color);
+    const orderComment = normalizeOptionalString(formData.get("orderComment"));
     const status = normalizeStatus(data.status);
+    const orderStatus = normalizeStatus(data.orderStatus);
     const orderDate = parseDate(normalizeOptionalDateString(data.orderDate));
     const paymentDate = parseDate(normalizeOptionalDateString(data.paymentDate));
     const screenshotDataRaw = normalizeOptionalString(data.screenshotData) ?? "";
@@ -464,6 +500,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const margin = (salePrice - costPrice) * 0.95;
 
     const updateData: Record<string, unknown> = {
+      orderId: existingSale.orderId ?? randomUUID(),
       productId,
       trackingNumber: productId,
       clientName,
@@ -471,14 +508,17 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       productName,
       productLink,
       paidTo,
+      orderComment,
       orderDate,
       paymentDate,
       size,
+      color,
       quantity,
       costPriceCny,
       costPrice,
       salePrice,
       margin,
+      orderStatus,
       status,
       updatedById: session.user.id
     };
@@ -739,5 +779,88 @@ export async function forceSyncAllTrackingAction(): Promise<{
   } catch (error) {
     console.error("forceSyncAllTrackingAction failed:", error);
     return { ok: false, error: "Не удалось запустить проверку трек-кодов" };
+  }
+}
+
+
+export async function createIdeaAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const links = parseStringList(formData.get("links")).slice(0, 20);
+    const screenshots = parseScreenshotList(normalizeOptionalString(formData.get("screenshotsJson")));
+
+    if (!title && !description && !links.length && !screenshots.length) {
+      return { ok: false, error: "Заполните хотя бы одно поле" };
+    }
+
+    await prisma.ideaEntry.create({
+      data: {
+        title: title || "Без названия",
+        description: description || null,
+        linksJson: links.length ? JSON.stringify(links) : null,
+        screenshotsJson: screenshots.length ? JSON.stringify(screenshots) : null,
+        createdById: session.user.id,
+        updatedById: session.user.id
+      }
+    });
+
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    console.error("createIdeaAction failed:", error);
+    return { ok: false, error: "Не удалось добавить идею" };
+  }
+}
+
+export async function updateIdeaAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { ok: false, error: "Не найден id идеи" };
+
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const links = parseStringList(formData.get("links")).slice(0, 20);
+    const screenshots = parseScreenshotList(normalizeOptionalString(formData.get("screenshotsJson")));
+
+    await prisma.ideaEntry.update({
+      where: { id },
+      data: {
+        title: title || "Без названия",
+        description: description || null,
+        linksJson: links.length ? JSON.stringify(links) : null,
+        screenshotsJson: screenshots.length ? JSON.stringify(screenshots) : null,
+        updatedById: session.user.id
+      }
+    });
+
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    console.error("updateIdeaAction failed:", error);
+    return { ok: false, error: "Не удалось обновить идею" };
+  }
+}
+
+export async function deleteIdeaAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { ok: false, error: "Требуется авторизация" };
+
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { ok: false, error: "Не найден id идеи" };
+
+    await prisma.ideaEntry.delete({ where: { id } });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    console.error("deleteIdeaAction failed:", error);
+    return { ok: false, error: "Не удалось удалить идею" };
   }
 }

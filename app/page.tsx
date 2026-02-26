@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { SalesTable } from "@/components/sales-table";
 import { CalculationCard } from "@/components/calculation-card";
 import { ScriptsBoard } from "@/components/scripts-board";
+import { IdeasBoard } from "@/components/ideas-board";
+import { NotificationsCenter } from "@/components/notifications-center";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { logoutAction } from "@/app/actions";
 
@@ -47,11 +49,17 @@ export default async function Home() {
       orderBy: { updatedAt: "desc" },
       take: 100
     });
+  const fetchIdeas = () =>
+    prisma.ideaEntry.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 100
+    });
 
   let sales: Awaited<ReturnType<typeof fetchSales>> = [];
   let scripts: Awaited<ReturnType<typeof fetchScripts>> = [];
+  let ideas: Awaited<ReturnType<typeof fetchIdeas>> = [];
   try {
-    [sales, scripts] = await Promise.all([fetchSales(), fetchScripts()]);
+    [sales, scripts, ideas] = await Promise.all([fetchSales(), fetchScripts(), fetchIdeas()]);
   } catch (error) {
     console.error("Failed to load home data:", error);
   }
@@ -68,6 +76,9 @@ export default async function Home() {
 
   const uiSales = sales.map((s) => ({
     id: s.id,
+    orderId: s.orderId,
+    orderStatus: s.orderStatus,
+    orderComment: s.orderComment,
     productId: s.productId,
     clientName: s.clientName,
     clientPhone: s.clientPhone,
@@ -87,6 +98,7 @@ export default async function Home() {
     trackingLastEvent: s.trackingLastEvent,
     trackingSyncedAt: s.trackingSyncedAt ? s.trackingSyncedAt.toISOString() : null,
     size: s.size,
+    color: s.color,
     quantity: s.quantity,
     costPriceCny: decimalText(s.costPriceCny),
     costPrice: decimalText(s.costPrice),
@@ -124,6 +136,7 @@ export default async function Home() {
               >
                 <User size={16} />
               </Link>
+              <NotificationsCenter sales={uiSales.map((sale) => ({ id: sale.id, clientName: sale.clientName, clientPhone: sale.clientPhone, productName: sale.productName, productId: sale.productId, status: sale.status }))} />
               <form action={logoutAction}>
                 <button
                   title="Выйти"
@@ -136,16 +149,26 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:mt-4 sm:gap-3 md:grid-cols-5">
+          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:mt-4 sm:gap-3 md:grid-cols-6">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
             <StatCard icon={<TengeIcon />} label="Выручка" value={money(totals.revenue)} />
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
-            <CalculationCard totalNetMargin={totalNetMargin} sales={sales.map((s) => ({ createdAt: s.createdAt.toISOString(), margin: Number(s.margin) }))} />
+            <CalculationCard totalNetMargin={totalNetMargin} sales={sales.map((s) => ({ paymentDate: s.paymentDate ? s.paymentDate.toISOString() : null, margin: Number(s.margin) }))} />
             <ScriptsBoard
               scripts={scripts.map((item) => ({
                 id: item.id,
                 question: item.question,
                 answer: item.answer,
+                updatedAt: item.updatedAt.toISOString()
+              }))}
+            />
+            <IdeasBoard
+              ideas={ideas.map((item) => ({
+                id: item.id,
+                title: item.title,
+                description: item.description || "",
+                links: item.linksJson ? (() => { try { return JSON.parse(item.linksJson) as string[]; } catch { return []; } })() : [],
+                screenshots: item.screenshotsJson ? (() => { try { return JSON.parse(item.screenshotsJson) as string[]; } catch { return []; } })() : [],
                 updatedAt: item.updatedAt.toISOString()
               }))}
             />

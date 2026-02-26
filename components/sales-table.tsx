@@ -24,9 +24,13 @@ import {
 } from "@/app/actions";
 import { SalesForm } from "@/components/sales-form";
 import { useModalHistory } from "@/lib/use-modal-history";
+import { MissingTrackAlert } from "@/components/notifications-center";
 
 type Sale = {
   id: string;
+  orderId?: string | null;
+  orderStatus?: "DONE" | "TODO" | "WAITING";
+  orderComment?: string | null;
   productId: string | null;
   clientName: string;
   clientPhone: string;
@@ -46,6 +50,7 @@ type Sale = {
   trackingLastEvent: string | null;
   trackingSyncedAt: string | null;
   size: string | null;
+  color?: string | null;
   quantity: number;
   costPriceCny: string;
   costPrice: string;
@@ -147,7 +152,8 @@ function normalizeName(value: string) {
   return value.trim().toLowerCase();
 }
 
-function archiveGroupKey(sale: Pick<Sale, "clientName" | "clientPhone" | "id">) {
+function archiveGroupKey(sale: Pick<Sale, "orderId" | "clientName" | "clientPhone" | "id">) {
+  if (sale.orderId) return `o:${sale.orderId}`;
   const phone = normalizePhone(sale.clientPhone);
   if (phone) return `p:${phone}`;
   const name = normalizeName(sale.clientName);
@@ -484,6 +490,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                       <p className="inline-flex items-center gap-2 text-sm font-semibold text-text">
                         <span className={`h-2.5 w-2.5 rounded-full ${clientDotColor(group.key)}`} />
                         {group.clientName}
+                        <MissingTrackAlert productId={group.sales.some((sale) => !sale.productId) ? "" : "ok"} />
                       </p>
                       <div className="flex items-center gap-1.5">
                         <p className="text-xs text-text">{group.clientPhone || "-"}</p>
@@ -531,6 +538,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                               <div className="min-w-0">
                                 <p className="break-words text-xs leading-4 text-text">{sale.productName}</p>
                                 {sale.productId && <p className="break-all text-[11px] text-muted">Трек: {sale.productId}</p>}
+                                {!sale.productId && <p className="inline-flex items-center gap-1 text-[11px] text-amber-300 animate-pulse"><MissingTrackAlert productId={sale.productId} /> Нет трек-кода</p>}
                               </div>
                               <p className="text-xs text-text">{sale.size || "-"}</p>
                               <p className="text-xs text-text">{sale.quantity}</p>
@@ -545,40 +553,17 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                                 <br />
                                 {statusLabel(sale.status)}
                               </p>
-
-                              <div className="flex items-center justify-end gap-1.5" onClick={(event) => event.stopPropagation()}>
-                                <SalesForm
-                                  compact
-                                  sale={{
-                                    id: sale.id,
-                                    productId: sale.productId,
-                                    clientName: sale.clientName,
-                                    clientPhone: sale.clientPhone,
-                                    productName: sale.productName,
-                                    productLink: sale.productLink,
-                                    paidTo: sale.paidTo,
-                                    orderDate: sale.orderDate,
-                                    paymentDate: sale.paymentDate,
-                                    screenshotData: sale.screenshotData,
-                                    receiptData: sale.receiptData,
-                                    size: sale.size,
-                                    quantity: sale.quantity,
-                                    costPriceCny: sale.costPriceCny,
-                                    salePrice: sale.salePrice,
-                                    status: sale.status === "DONE" ? "DONE" : "TODO"
-                                  }}
-                                />
-
-                                <button
-                                  type="button"
-                                  onClick={() => setTrashTargetSale(sale)}
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line text-muted transition hover:border-red-400 hover:text-red-300"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
+                            <div className="flex items-center justify-end gap-1.5" onClick={(event) => event.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => setTrashTargetSale(sale)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line text-muted transition hover:border-red-400 hover:text-red-300"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
-                          );
+                          </div>
+                        );
                         })}
                       </div>
                     )}
@@ -605,6 +590,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                   <p className="inline-flex items-center gap-2 text-base font-semibold text-text">
                     <span className={`h-2.5 w-2.5 rounded-full ${clientDotColor(group.key)}`} />
                     {group.clientName}
+                    <MissingTrackAlert productId={group.sales.some((sale) => !sale.productId) ? "" : "ok"} />
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="text-xs text-muted">{group.clientPhone}</p>
@@ -650,29 +636,6 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
                           <p className="text-muted">Маржа: <span className="text-success">{money(sale.margin)}</span></p>
                           <p className="text-muted">Выручка: <span className="text-text">{money(revenue)}</span></p>
                         </div>
-                        <div className="mt-2 flex justify-end" onClick={(event) => event.stopPropagation()}>
-                          <SalesForm
-                            compact
-                            sale={{
-                              id: sale.id,
-                              productId: sale.productId,
-                              clientName: sale.clientName,
-                              clientPhone: sale.clientPhone,
-                              productName: sale.productName,
-                              productLink: sale.productLink,
-                              paidTo: sale.paidTo,
-                              orderDate: sale.orderDate,
-                              paymentDate: sale.paymentDate,
-                              screenshotData: sale.screenshotData,
-                                    receiptData: sale.receiptData,
-                              size: sale.size,
-                              quantity: sale.quantity,
-                              costPriceCny: sale.costPriceCny,
-                              salePrice: sale.salePrice,
-                              status: sale.status === "DONE" ? "DONE" : "TODO"
-                            }}
-                          />
-                        </div>
                       </div>
                     );
                   })}
@@ -696,7 +659,7 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <div className="flex items-start gap-2">
                 <span className={`mt-1 h-6 w-1.5 shrink-0 rounded-full ${statusColor(sale.status)}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-text">{sale.productName || "-"}</p>
+                  <p className="truncate text-sm font-semibold text-text inline-flex items-center gap-1">{sale.productName || "-"} {!sale.productId && <MissingTrackAlert productId={sale.productId} />}</p>
                   <p className="truncate text-xs text-muted">{sale.clientName}</p>
                   <div className="mt-0.5 flex items-center gap-1.5">
                     <p className="truncate text-xs text-muted">{sale.clientPhone || "-"}</p>
@@ -778,6 +741,13 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
               <Info label="Изменил" value={selectedSale.updatedByName} />
             </div>
 
+            {selectedSale.orderComment && (
+              <div className="mt-3 rounded-xl border border-line bg-card p-3 text-sm text-text">
+                <p className="text-xs text-muted">Комментарий к заказу</p>
+                <p className="mt-1 whitespace-pre-wrap">{selectedSale.orderComment}</p>
+              </div>
+            )}
+
             {selectedSale.productLink && (
               <a href={selectedSale.productLink} target="_blank" rel="noreferrer" className="mt-4 inline-block rounded-xl border border-line px-4 py-2 text-sm text-accent transition hover:border-accent">
                 Открыть ссылку товара
@@ -837,6 +807,32 @@ export function SalesTable({ sales }: { sales: Sale[] }) {
             )}
 
             <div className="mt-4 grid grid-cols-1 gap-2 border-t border-line pt-4 sm:grid-cols-3">
+              <SalesForm
+                compact
+                sale={{
+                  id: selectedSale.id,
+                  orderId: selectedSale.orderId,
+                  orderStatus: selectedSale.orderStatus === "DONE" ? "DONE" : "TODO",
+                  orderComment: selectedSale.orderComment ?? null,
+                  productId: selectedSale.productId,
+                  clientName: selectedSale.clientName,
+                  clientPhone: selectedSale.clientPhone,
+                  productName: selectedSale.productName,
+                  productLink: selectedSale.productLink,
+                  paidTo: selectedSale.paidTo,
+                  orderDate: selectedSale.orderDate,
+                  paymentDate: selectedSale.paymentDate,
+                  screenshotData: selectedSale.screenshotData || screenshotCache[selectedSale.id] || null,
+                  receiptData: selectedSale.receiptData || receiptCache[selectedSale.id] || null,
+                  size: selectedSale.size,
+                  color: selectedSale.color ?? null,
+                  quantity: selectedSale.quantity,
+                  costPriceCny: selectedSale.costPriceCny,
+                  salePrice: selectedSale.salePrice,
+                  status: selectedSale.status === "DONE" ? "DONE" : "TODO"
+                }}
+              />
+
               <button
                 type="button"
                 onClick={closeDetailsModal}

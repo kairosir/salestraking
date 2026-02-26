@@ -10,6 +10,9 @@ import { useModalHistory } from "@/lib/use-modal-history";
 
 type SaleRow = {
   id: string;
+  orderId?: string | null;
+  orderStatus?: "DONE" | "TODO" | "WAITING";
+  orderComment?: string | null;
   productId: string | null;
   clientName: string;
   clientPhone: string;
@@ -21,6 +24,7 @@ type SaleRow = {
   screenshotData: string | null;
   receiptData: string | null;
   size: string | null;
+  color?: string | null;
   quantity: number;
   costPriceCny: string;
   salePrice: string;
