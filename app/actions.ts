@@ -325,22 +325,22 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       );
     } else {
       const parsed = saleSchema.safeParse({
-        productId: formData.get("productId"),
-        clientName,
-        clientPhone,
-        productName: formData.get("productName"),
-        productLink: formData.get("productLink"),
-        paidTo,
-        orderDate: formData.get("orderDate"),
-        paymentDate: formData.get("paymentDate"),
-        screenshotData: formData.get("screenshotData"),
-        receiptData: formData.get("receiptData"),
-        size: formData.get("size"),
-        status,
-        orderStatus: formText(formData.get("orderStatus")) || status,
-        quantity: formData.get("quantity"),
-        costPriceCny: formData.get("costPriceCny"),
-        salePrice: formData.get("salePrice")
+        productId: formText(formData.get("productId")),
+        clientName: formText(formData.get("clientName")) || clientName,
+        clientPhone: formText(formData.get("clientPhone")) || clientPhone,
+        productName: formText(formData.get("productName")),
+        productLink: formText(formData.get("productLink")),
+        paidTo: formText(formData.get("paidTo")),
+        orderDate: formText(formData.get("orderDate")),
+        paymentDate: formText(formData.get("paymentDate")),
+        screenshotData: formText(formData.get("screenshotData")),
+        receiptData: formText(formData.get("receiptData")),
+        size: formText(formData.get("size")),
+        status: formText(formData.get("status")) || status,
+        orderStatus: formText(formData.get("orderStatus")) || formText(formData.get("status")) || status,
+        quantity: formText(formData.get("quantity")),
+        costPriceCny: formText(formData.get("costPriceCny")),
+        salePrice: formText(formData.get("salePrice"))
       });
 
       if (!parsed.success) {
@@ -353,7 +353,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       const orderId = batchOrderId;
       const productLink = normalizeOptionalString(data.productLink);
       const size = normalizeOptionalString(data.size);
-      const color = normalizeOptionalString(formData.get("color"));
+      const color = normalizeOptionalString(formText(formData.get("color")));
       const orderStatus = normalizeStatus(data.orderStatus);
       const costPriceCny = Number(data.costPriceCny);
       const salePrice = Number(data.salePrice);
@@ -621,9 +621,17 @@ export async function moveSaleToTrashAction(formData: FormData): Promise<{ ok: b
   const id = String(formData.get("id") ?? "");
   if (!id) return { ok: false, error: "Не найден id записи" };
 
+  const existing = await prisma.sale.findUnique({
+    where: { id },
+    select: { status: true }
+  });
+  if (!existing) return { ok: false, error: "Запись не найдена" };
+  const previousStatus = existing.status === "DONE" ? "DONE" : "TODO";
+
   await prisma.sale.update({
     where: { id },
     data: {
+      orderStatus: previousStatus,
       status: "WAITING",
       isIssued: false,
       updatedById: session.user.id
@@ -640,10 +648,25 @@ export async function restoreSalesFromTrashAction(formData: FormData): Promise<{
   const ids = parseIds(formData.get("ids"));
   if (!ids.length) return { ok: false, error: "Не выбраны записи" };
 
-  await prisma.sale.updateMany({
+  const rows = await prisma.sale.findMany({
     where: { id: { in: ids }, status: "WAITING" },
-    data: { status: "TODO", isIssued: false, updatedById: session.user.id }
+    select: { id: true, orderStatus: true }
   });
+
+  if (!rows.length) return { ok: false, error: "Не найдено записей для восстановления" };
+
+  await prisma.$transaction(
+    rows.map((row) =>
+      prisma.sale.update({
+        where: { id: row.id },
+        data: {
+          status: row.orderStatus === "DONE" ? "DONE" : "TODO",
+          isIssued: false,
+          updatedById: session.user.id
+        }
+      })
+    )
+  );
   revalidateSalesPages();
   return { ok: true };
 }
@@ -674,6 +697,7 @@ export async function markSaleDoneAction(id: string): Promise<{ ok: boolean; err
       where: { id },
       data: {
         status: "DONE",
+        orderStatus: "DONE",
         isIssued: true,
         updatedById: session.user.id
       }
