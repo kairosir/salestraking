@@ -46,9 +46,34 @@ type SaleForTracking = {
 
 const DEFAULT_BASE_URL = "https://api.17track.net/track/v2.4";
 
+function parseTrackingCandidates(value: string | null | undefined) {
+  if (!value) return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => String(item ?? "").trim())
+          .map((item) => item.replace(/^[,;\s]+|[,;\s]+$/g, ""))
+          .filter(Boolean);
+      }
+    } catch {
+      // ignore and fallback to split
+    }
+  }
+
+  return trimmed
+    .split(/[\n,;]+/g)
+    .map((item) => item.trim())
+    .map((item) => item.replace(/^[,;\s]+|[,;\s]+$/g, ""))
+    .filter(Boolean);
+}
+
 function normalizeTrackingNumber(value: string | null | undefined) {
-  if (!value) return "";
-  return value.trim();
+  return parseTrackingCandidates(value)[0] ?? "";
 }
 
 function parseLimit() {
@@ -197,14 +222,14 @@ function ensure17TrackBusinessSuccess(payload: unknown) {
 }
 
 async function registerIfNeeded(apiKey: string, trackingNumber: string, registeredAt: Date | null) {
-  if (registeredAt) return { ok: true, registeredAt };
+  if (registeredAt) return { ok: true, registeredAt, error: null as string | null };
 
   try {
     const payload = await call17Track(apiKey, "/register", [{ number: trackingNumber }]);
     ensure17TrackBusinessSuccess(payload);
-    return { ok: true, registeredAt: new Date() };
-  } catch {
-    return { ok: false, registeredAt: null as Date | null };
+    return { ok: true, registeredAt: new Date(), error: null as string | null };
+  } catch (error) {
+    return { ok: false, registeredAt: null as Date | null, error: getErrorMessage(error) };
   }
 }
 
@@ -215,6 +240,10 @@ function getErrorMessage(error: unknown) {
 
 function isNotRegisteredMessage(message: string) {
   return /does not register|register first|not register/i.test(message);
+}
+
+function registrationPendingStatusText() {
+  return "Регистрация трек-кода в 17TRACK";
 }
 
 function toFailureStatus(message: string) {
@@ -437,8 +466,57 @@ export async function sync17Track(scope: SyncScope = {}): Promise<SyncSummary> {
               info = await getTrackInfo(apiKey, trackingNumber);
               failureMessage = "";
             } catch (retryError) {
-              failureMessage = getErrorMessage(retryError);
+              const retryMessage = getErrorMessage(retryError);
+              if (isNotRegisteredMessage(retryMessage)) {
+                const pendingStatus = registrationPendingStatusText();
+                const wasPending = groupedSales.every((item) => item.trackingStatus === pendingStatus);
+                await prisma.$transaction([
+                  prisma.sale.updateMany({
+                    where: {
+                      ...(scope.force ? {} : { status: { in: [SaleStatus.TODO, SaleStatus.DONE] } }),
+                      OR: [{ trackingNumber }, { productId: trackingNumber }]
+                    },
+                    data: {
+                      trackingNumber,
+                      trackingProvider: "17TRACK",
+                      trackingStatus: pendingStatus,
+                      trackingSubstatus: null,
+                      trackingLastEvent: null,
+                      trackingSyncedAt: now,
+                      trackingRegisteredAt: registerResult.registeredAt ?? now,
+                      trackingNextCheckAt: addDays(now, 1)
+                    }
+                  }),
+                  prisma.trackingCheckLog.create({
+                    data: {
+                      trackingNumber,
+                      success: true,
+                      status: pendingStatus,
+                      response: toJsonInput({ pending: true, reason: retryMessage })
+                    }
+                  })
+                ]);
+
+                if (!wasPending) {
+                  const pendingMessage = trackingStatusMessage({
+                    saleId: sale.id,
+                    clientName: sale.clientName,
+                    clientPhone: sale.clientPhone,
+                    productName: sale.productName,
+                    trackingNumber,
+                    status: pendingStatus
+                  });
+                  for (const recipient of recipients) {
+                    if (!recipient.telegramChatId) continue;
+                    await sendTelegramMessage(recipient.telegramChatId, pendingMessage);
+                  }
+                }
+                continue;
+              }
+              failureMessage = retryMessage;
             }
+          } else {
+            failureMessage = registerResult.error || failureMessage;
           }
         }
       }

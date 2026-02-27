@@ -37,6 +37,36 @@ function normalizeOptionalDateString(value: unknown) {
   return trimmed || undefined;
 }
 
+function parseTrackingCandidates(value: string | null | undefined) {
+  if (!value) return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => String(item ?? "").trim())
+          .map((item) => item.replace(/^[,;\s]+|[,;\s]+$/g, ""))
+          .filter(Boolean);
+      }
+    } catch {
+      // ignore and fallback to split
+    }
+  }
+
+  return trimmed
+    .split(/[\n,;]+/g)
+    .map((item) => item.trim())
+    .map((item) => item.replace(/^[,;\s]+|[,;\s]+$/g, ""))
+    .filter(Boolean);
+}
+
+function primaryTrackingNumber(value: string | null | undefined) {
+  return parseTrackingCandidates(value)[0] ?? null;
+}
+
 function normalizeStatus(value: unknown): SaleStatus {
   if (value === "DONE" || value === "TODO") return value;
   return "TODO";
@@ -254,20 +284,21 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         lineItems.map((item) => {
           const costPrice = item.costPriceCny * CNY_TO_KZT;
           const margin = calculateMargin(item.salePrice, item.costPriceCny);
+          const itemTrackingNumber = primaryTrackingNumber(item.productId);
           return prisma.sale.create({
             data: {
               ...shared,
               screenshotData: item.screenshotData || shared.screenshotData,
               receiptData: item.receiptData || shared.receiptData,
               productId: item.productId,
-              trackingNumber: item.productId,
-              trackingProvider: item.productId ? "17TRACK" : null,
+              trackingNumber: itemTrackingNumber,
+              trackingProvider: itemTrackingNumber ? "17TRACK" : null,
               trackingStatus: null,
               trackingSubstatus: null,
               trackingLastEvent: null,
               trackingSyncedAt: null,
               trackingRegisteredAt: null,
-              trackingNextCheckAt: item.productId ? trackingFirstCheckAt : null,
+              trackingNextCheckAt: itemTrackingNumber ? trackingFirstCheckAt : null,
               trackingArrivedAt: null,
               trackingLastChangedAt: null,
               trackingRaw: Prisma.DbNull,
@@ -324,19 +355,20 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
       const quantity = Math.max(1, Number(data.quantity) || 1);
       const costPrice = costPriceCny * CNY_TO_KZT;
       const margin = calculateMargin(salePrice, costPriceCny);
+      const nextTrackingNumber = primaryTrackingNumber(productId);
 
       await prisma.sale.create({
         data: {
           ...shared,
           productId,
-          trackingNumber: productId,
-          trackingProvider: productId ? "17TRACK" : null,
+          trackingNumber: nextTrackingNumber,
+          trackingProvider: nextTrackingNumber ? "17TRACK" : null,
           trackingStatus: null,
           trackingSubstatus: null,
           trackingLastEvent: null,
           trackingSyncedAt: null,
           trackingRegisteredAt: null,
-          trackingNextCheckAt: productId ? trackingFirstCheckAt : null,
+          trackingNextCheckAt: nextTrackingNumber ? trackingFirstCheckAt : null,
           trackingArrivedAt: null,
           trackingLastChangedAt: null,
           trackingRaw: Prisma.DbNull,
@@ -443,7 +475,7 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     if (!id) return { ok: false, error: "Не найден id записи" };
     const existingSale = await prisma.sale.findUnique({
       where: { id },
-      select: { productId: true, orderId: true }
+      select: { productId: true, trackingNumber: true, orderId: true }
     });
     if (!existingSale) return { ok: false, error: "Запись не найдена" };
 
@@ -503,10 +535,12 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     const costPrice = costPriceCny * CNY_TO_KZT;
     const margin = calculateMargin(salePrice, costPriceCny);
 
+    const nextTrackingNumber = primaryTrackingNumber(productId);
+
     const updateData: Record<string, unknown> = {
       orderId: existingSale.orderId ?? randomUUID(),
       productId,
-      trackingNumber: productId,
+      trackingNumber: nextTrackingNumber,
       clientName,
       clientPhone,
       productName,
@@ -527,10 +561,10 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
       updatedById: session.user.id
     };
 
-    const normalizedOld = (existingSale.productId ?? "").trim();
-    const normalizedNew = (productId ?? "").trim();
+    const normalizedOld = (existingSale.trackingNumber ?? existingSale.productId ?? "").trim();
+    const normalizedNew = (nextTrackingNumber ?? "").trim();
     const trackingChanged = normalizedOld !== normalizedNew;
-    if (!productId) {
+    if (!nextTrackingNumber) {
       updateData.trackingProvider = null;
       updateData.trackingStatus = null;
       updateData.trackingSubstatus = null;
