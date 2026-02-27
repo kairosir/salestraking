@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { SalesForm } from "@/components/sales-form";
 import { useModalHistory } from "@/lib/use-modal-history";
 
 const CNY_TO_KZT = 80;
@@ -18,8 +17,6 @@ type SaleRow = {
   paidTo: string | null;
   orderDate: string | null;
   paymentDate: string | null;
-  screenshotData: string | null;
-  receiptData: string | null;
   size: string | null;
   quantity: number;
   costPriceCny: string;
@@ -200,29 +197,6 @@ export function FinanceAuditPanel({ sales }: { sales: SaleRow[] }) {
                     </div>
                   </div>
 
-                  <div className="flex justify-end border-t border-line pt-4">
-                    <SalesForm
-                      compact
-                      sale={{
-                        id: selectedSale.id,
-                        productId: selectedSale.productId,
-                        clientName: selectedSale.clientName,
-                        clientPhone: selectedSale.clientPhone,
-                        productName: selectedSale.productName,
-                        productLink: selectedSale.productLink,
-                        paidTo: selectedSale.paidTo,
-                        orderDate: selectedSale.orderDate,
-                        paymentDate: selectedSale.paymentDate,
-                        screenshotData: selectedSale.screenshotData,
-                        receiptData: selectedSale.receiptData,
-                        size: selectedSale.size,
-                        quantity: selectedSale.quantity,
-                        costPriceCny: selectedSale.costPriceCny,
-                        salePrice: selectedSale.salePrice,
-                        status: selectedSale.status
-                      }}
-                    />
-                  </div>
                 </div>
               );
             })()}

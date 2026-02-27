@@ -53,7 +53,25 @@ export default async function AccountPage() {
       ? prisma.sale.findMany({
           where: { status: { not: "WAITING" } },
           orderBy: { createdAt: "desc" },
-          take: 700
+          take: 700,
+          select: {
+            id: true,
+            productId: true,
+            clientName: true,
+            clientPhone: true,
+            productName: true,
+            productLink: true,
+            paidTo: true,
+            orderDate: true,
+            paymentDate: true,
+            size: true,
+            quantity: true,
+            costPriceCny: true,
+            salePrice: true,
+            margin: true,
+            status: true,
+            createdAt: true
+          }
         })
       : Promise.resolve([])
   ]);
@@ -165,8 +183,6 @@ export default async function AccountPage() {
               paidTo: sale.paidTo,
               orderDate: sale.orderDate ? sale.orderDate.toISOString() : null,
               paymentDate: sale.paymentDate ? sale.paymentDate.toISOString() : null,
-              screenshotData: sale.screenshotData,
-              receiptData: sale.receiptData,
               size: sale.size,
               quantity: sale.quantity,
               costPriceCny: sale.costPriceCny.toString(),

@@ -39,7 +39,35 @@ export default async function Home() {
   const fetchSales = () =>
     prisma.sale.findMany({
       orderBy: { createdAt: "desc" },
-      include: {
+      select: {
+        id: true,
+        orderId: true,
+        orderStatus: true,
+        orderComment: true,
+        productId: true,
+        clientName: true,
+        clientPhone: true,
+        productName: true,
+        productLink: true,
+        paidTo: true,
+        orderDate: true,
+        paymentDate: true,
+        trackingNumber: true,
+        trackingProvider: true,
+        trackingStatus: true,
+        trackingSubstatus: true,
+        trackingLastEvent: true,
+        trackingSyncedAt: true,
+        size: true,
+        color: true,
+        quantity: true,
+        costPriceCny: true,
+        costPrice: true,
+        salePrice: true,
+        margin: true,
+        status: true,
+        isIssued: true,
+        createdAt: true,
         createdBy: { select: { name: true, email: true, username: true } },
         updatedBy: { select: { name: true, email: true, username: true } }
       }
@@ -58,11 +86,27 @@ export default async function Home() {
   let sales: Awaited<ReturnType<typeof fetchSales>> = [];
   let scripts: Awaited<ReturnType<typeof fetchScripts>> = [];
   let ideas: Awaited<ReturnType<typeof fetchIdeas>> = [];
+  let screenshotIds: string[] = [];
+  let receiptIds: string[] = [];
   try {
-    [sales, scripts, ideas] = await Promise.all([fetchSales(), fetchScripts(), fetchIdeas()]);
+    const [salesData, scriptsData, ideasData, screenshotRows, receiptRows] = await Promise.all([
+      fetchSales(),
+      fetchScripts(),
+      fetchIdeas(),
+      prisma.sale.findMany({ where: { screenshotData: { not: null } }, select: { id: true } }),
+      prisma.sale.findMany({ where: { receiptData: { not: null } }, select: { id: true } })
+    ]);
+    sales = salesData;
+    scripts = scriptsData;
+    ideas = ideasData;
+    screenshotIds = screenshotRows.map((row) => row.id);
+    receiptIds = receiptRows.map((row) => row.id);
   } catch (error) {
     console.error("Failed to load home data:", error);
   }
+
+  const screenshotIdSet = new Set(screenshotIds);
+  const receiptIdSet = new Set(receiptIds);
 
   const totals = sales.reduce(
     (acc, sale) => {
@@ -88,8 +132,8 @@ export default async function Home() {
     paymentDate: s.paymentDate ? s.paymentDate.toISOString() : null,
     screenshotData: null,
     receiptData: null,
-    hasScreenshot: Boolean(s.screenshotData),
-    hasReceipt: Boolean(s.receiptData),
+    hasScreenshot: screenshotIdSet.has(s.id),
+    hasReceipt: receiptIdSet.has(s.id),
     trackingNumber: s.trackingNumber,
     trackingProvider: s.trackingProvider,
     trackingStatus: s.trackingStatus,
