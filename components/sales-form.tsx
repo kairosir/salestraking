@@ -781,6 +781,7 @@ export function SalesForm({
           productId: item.productId,
           productLink: item.productLink,
           size: item.size,
+          status,
           quantity: item.quantity,
           costPriceCny: item.costPriceCny,
           salePrice: item.salePrice,

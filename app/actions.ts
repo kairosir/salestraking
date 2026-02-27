@@ -120,7 +120,7 @@ function isScreenshotPayloadValid(raw: string | null | undefined) {
   return true;
 }
 
-function parseLineItems(raw: unknown): SaleLineItem[] {
+function parseLineItems(raw: unknown, fallbackStatus: SaleStatus = "TODO"): SaleLineItem[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
   try {
     const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
@@ -134,7 +134,7 @@ function parseLineItems(raw: unknown): SaleLineItem[] {
         const rawColor = normalizeOptionalString(item.color);
         const rawScreenshot = normalizeOptionalString(item.screenshotData);
         const rawReceipt = normalizeOptionalString(item.receiptData);
-        const status = normalizeStatus(item.status);
+        const status = normalizeStatus(item.status ?? fallbackStatus);
         const quantity = Math.max(1, Math.floor(parseFlexibleNumber(item.quantity) || 1));
         const costPriceCny = Math.max(0, parseFlexibleNumber(item.costPriceCny));
         const salePrice = Math.max(0, parseFlexibleNumber(item.salePrice));
@@ -243,7 +243,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
     const paymentDate = parseDate(normalizeOptionalDateString(formData.get("paymentDate")));
     const screenshotDataRaw = normalizeOptionalString(formData.get("screenshotData")) ?? "";
     const receiptDataRaw = normalizeOptionalString(formData.get("receiptData")) ?? "";
-    const lineItems = parseLineItems(formData.get("lineItems"));
+    const lineItems = parseLineItems(formData.get("lineItems"), status);
     const trackingFirstCheckAt = addDays(new Date(), TRACKING_FIRST_CHECK_DAYS);
     const batchOrderId = normalizeOptionalString(formData.get("orderId")) ?? randomUUID();
 
