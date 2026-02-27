@@ -66,11 +66,10 @@ export default async function Home() {
 
   const totals = sales.reduce(
     (acc, sale) => {
-      acc.revenue += Number(sale.salePrice);
       acc.margin += Number(sale.margin);
       return acc;
     },
-    { revenue: 0, margin: 0 }
+    { margin: 0 }
   );
   const totalNetMargin = totals.margin;
 
@@ -149,9 +148,8 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:mt-4 sm:gap-3 md:grid-cols-6">
+          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:mt-4 sm:gap-3 md:grid-cols-5">
             <StatCard icon={<ChartNoAxesCombined size={18} />} label="Продажи" value={String(sales.length)} />
-            <StatCard icon={<TengeIcon />} label="Выручка" value={money(totals.revenue)} />
             <StatCard icon={<TrendingUp size={18} />} label="Маржа" value={money(totalNetMargin)} accent />
             <CalculationCard totalNetMargin={totalNetMargin} sales={sales.map((s) => ({ paymentDate: s.paymentDate ? s.paymentDate.toISOString() : null, margin: Number(s.margin) }))} />
             <ScriptsBoard
@@ -179,14 +177,6 @@ export default async function Home() {
 
       </div>
     </main>
-  );
-}
-
-function TengeIcon() {
-  return (
-    <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-line px-1 text-[11px] font-semibold leading-none">
-      ₸
-    </span>
   );
 }
 

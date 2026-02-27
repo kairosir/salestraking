@@ -25,15 +25,11 @@ export default async function AccountPage() {
   const recipientWhere: Array<{ userId: string } | { email: string }> = [{ userId: session.user.id }];
   if (session.user.email) recipientWhere.push({ email: session.user.email });
 
-  const [mySales, allMySalesForRevenue, myAgg] = await Promise.all([
+  const [mySales, myAgg] = await Promise.all([
     prisma.sale.findMany({
       where: { createdById: session.user.id, status: { not: "WAITING" } },
       orderBy: { createdAt: "desc" },
       take: 120
-    }),
-    prisma.sale.findMany({
-      where: { createdById: session.user.id, status: { not: "WAITING" } },
-      select: { salePrice: true, quantity: true }
     }),
     prisma.sale.aggregate({
       where: { createdById: session.user.id, status: { not: "WAITING" } },
@@ -77,7 +73,6 @@ export default async function AccountPage() {
   }
 
   const totalMargin = Number(myAgg._sum.margin ?? 0);
-  const totalRevenue = allMySalesForRevenue.reduce((sum, sale) => sum + Number(sale.salePrice), 0);
   const totalSalesCount = myAgg._count.id;
 
   return (
@@ -100,10 +95,9 @@ export default async function AccountPage() {
           </div>
         </header>
 
-        <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <Card icon={<User size={18} />} label="Пользователь" value={session.user.name || session.user.email || "User"} />
           <Card icon={<TengeIcon />} label="Мой заработок (маржа)" value={money(totalMargin)} accent />
-          <Card icon={<TengeIcon />} label="Моя выручка" value={money(totalRevenue)} />
           <Card icon={<TengeIcon />} label="Мои продажи" value={String(totalSalesCount)} />
         </section>
 

@@ -88,7 +88,8 @@ function parseFlexibleNumber(value: string) {
 }
 
 function calculateMargin(salePrice: number, costPriceCny: number) {
-  return (salePrice - (costPriceCny * CNY_TO_KZT)) * 0.95;
+  const saleAfterFee = salePrice * 0.95;
+  return saleAfterFee - (costPriceCny * CNY_TO_KZT);
 }
 
 function toDateInputValue(value?: string | null) {
