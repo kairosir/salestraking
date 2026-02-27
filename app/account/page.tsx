@@ -4,6 +4,7 @@ import { KeyRound, User } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { FinanceAuditPanel } from "@/components/finance-audit-panel";
 import { MyOrdersPanel } from "@/components/my-orders-panel";
 import { NotificationSettings } from "@/components/notification-settings";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -25,7 +26,19 @@ export default async function AccountPage() {
   const recipientWhere: Array<{ userId: string } | { email: string }> = [{ userId: session.user.id }];
   if (session.user.email) recipientWhere.push({ email: session.user.email });
 
-  const [mySales, myAgg] = await Promise.all([
+  const accountIdentity = [session.user.email, session.user.name].filter(Boolean).map((value) => String(value).toLowerCase());
+  const userMeta = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { username: true, email: true, name: true }
+  });
+  accountIdentity.push(...[userMeta?.username, userMeta?.email, userMeta?.name].filter(Boolean).map((value) => String(value).toLowerCase()));
+
+  const canForceTrackingSync = accountIdentity.some((value) => value === "test" || value.startsWith("test@"));
+  const canViewGlobalFinanceAudit = accountIdentity.some(
+    (value) => value === "test" || value.startsWith("test@") || value === "aim" || value.startsWith("aim@")
+  );
+
+  const [mySales, myAgg, allSalesForAudit] = await Promise.all([
     prisma.sale.findMany({
       where: { createdById: session.user.id, status: { not: "WAITING" } },
       orderBy: { createdAt: "desc" },
@@ -35,7 +48,14 @@ export default async function AccountPage() {
       where: { createdById: session.user.id, status: { not: "WAITING" } },
       _sum: { margin: true },
       _count: { id: true }
-    })
+    }),
+    canViewGlobalFinanceAudit
+      ? prisma.sale.findMany({
+          where: { status: { not: "WAITING" } },
+          orderBy: { createdAt: "desc" },
+          take: 700
+        })
+      : Promise.resolve([])
   ]);
 
   let recipients: Array<{
@@ -47,13 +67,6 @@ export default async function AccountPage() {
     telegramEnabled: boolean;
     isActive: boolean;
   }> = [];
-  const accountIdentity = [session.user.email, session.user.name].filter(Boolean).map((value) => String(value).toLowerCase());
-  const userMeta = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { username: true, email: true, name: true }
-  });
-  accountIdentity.push(...[userMeta?.username, userMeta?.email, userMeta?.name].filter(Boolean).map((value) => String(value).toLowerCase()));
-  const canForceTrackingSync = accountIdentity.some((value) => value === "test" || value.startsWith("test@"));
   try {
     recipients = await prisma.notificationRecipient.findMany({
       where: { OR: recipientWhere },
@@ -139,6 +152,31 @@ export default async function AccountPage() {
             createdAt: sale.createdAt.toISOString()
           }))}
         />
+
+        {canViewGlobalFinanceAudit && (
+          <FinanceAuditPanel
+            sales={allSalesForAudit.map((sale) => ({
+              id: sale.id,
+              productId: sale.productId,
+              clientName: sale.clientName,
+              clientPhone: sale.clientPhone,
+              productName: sale.productName,
+              productLink: sale.productLink,
+              paidTo: sale.paidTo,
+              orderDate: sale.orderDate ? sale.orderDate.toISOString() : null,
+              paymentDate: sale.paymentDate ? sale.paymentDate.toISOString() : null,
+              screenshotData: sale.screenshotData,
+              receiptData: sale.receiptData,
+              size: sale.size,
+              quantity: sale.quantity,
+              costPriceCny: sale.costPriceCny.toString(),
+              salePrice: sale.salePrice.toString(),
+              margin: sale.margin.toString(),
+              status: sale.status === "DONE" ? "DONE" : "TODO",
+              createdAt: sale.createdAt.toISOString()
+            }))}
+          />
+        )}
       </div>
     </main>
   );
