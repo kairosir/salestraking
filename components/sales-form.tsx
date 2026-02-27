@@ -904,6 +904,7 @@ export function SalesForm({
 
               <form action={handleSubmit} className="space-y-4">
                 <input type="hidden" name="status" value={status} />
+                <input type="hidden" name="orderStatus" value={status} />
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>

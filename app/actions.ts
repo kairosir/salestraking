@@ -37,6 +37,10 @@ function normalizeOptionalDateString(value: unknown) {
   return trimmed || undefined;
 }
 
+function formText(value: FormDataEntryValue | null | undefined) {
+  return typeof value === "string" ? value : "";
+}
+
 function parseTrackingCandidates(value: string | null | undefined) {
   if (!value) return [];
   const trimmed = value.trim();
@@ -333,7 +337,7 @@ export async function createSaleAction(formData: FormData): Promise<{ ok: boolea
         receiptData: formData.get("receiptData"),
         size: formData.get("size"),
         status,
-        orderStatus: formData.get("orderStatus"),
+        orderStatus: formText(formData.get("orderStatus")) || status,
         quantity: formData.get("quantity"),
         costPriceCny: formData.get("costPriceCny"),
         salePrice: formData.get("salePrice")
@@ -481,23 +485,23 @@ export async function updateSaleAction(formData: FormData): Promise<{ ok: boolea
     if (!existingSale) return { ok: false, error: "Запись не найдена" };
 
     const parsed = saleSchema.safeParse({
-      productId: formData.get("productId"),
-      clientName: formData.get("clientName"),
-      clientPhone: formData.get("clientPhone"),
-      productName: formData.get("productName"),
-      productLink: formData.get("productLink"),
-      paidTo: formData.get("paidTo"),
-      orderDate: formData.get("orderDate"),
-      paymentDate: formData.get("paymentDate"),
-      screenshotData: formData.get("screenshotData"),
-      receiptData: formData.get("receiptData"),
-      size: formData.get("size"),
-      color: formData.get("color"),
-      status: formData.get("status"),
-      orderStatus: formData.get("orderStatus"),
-      quantity: formData.get("quantity"),
-      costPriceCny: formData.get("costPriceCny"),
-      salePrice: formData.get("salePrice")
+      productId: formText(formData.get("productId")),
+      clientName: formText(formData.get("clientName")),
+      clientPhone: formText(formData.get("clientPhone")),
+      productName: formText(formData.get("productName")),
+      productLink: formText(formData.get("productLink")),
+      paidTo: formText(formData.get("paidTo")),
+      orderDate: formText(formData.get("orderDate")),
+      paymentDate: formText(formData.get("paymentDate")),
+      screenshotData: formText(formData.get("screenshotData")),
+      receiptData: formText(formData.get("receiptData")),
+      size: formText(formData.get("size")),
+      color: formText(formData.get("color")),
+      status: formText(formData.get("status")) || undefined,
+      orderStatus: formText(formData.get("orderStatus")) || formText(formData.get("status")) || undefined,
+      quantity: formText(formData.get("quantity")),
+      costPriceCny: formText(formData.get("costPriceCny")),
+      salePrice: formText(formData.get("salePrice"))
     });
 
     if (!parsed.success) {
